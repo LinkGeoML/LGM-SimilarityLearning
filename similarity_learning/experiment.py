@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
@@ -10,7 +11,7 @@ import similarity_learning.loss as losses
 import similarity_learning.metric as metrics_module
 import similarity_learning.model as models
 from similarity_learning.config import DirConf
-from similarity_learning.logger import DummyLogger
+from similarity_learning.logger import DummyLogger, app_logger
 from similarity_learning.utils import timer, underscore_to_camel
 
 
@@ -204,6 +205,75 @@ class ExperimentSetup:
 class Experiment:
 
     def __init__(self, **kwargs):
+        self.dataset_params = kwargs['dataset']
+        self.model_params = kwargs['model']
+        self.criterion_params = kwargs['criterion']
+        self.optimizer_params = kwargs.get('optimizer')
+        self.training_params = kwargs['training']
+        self.metrics_params = kwargs.get('metrics', {})
+
+        self._logger = None
+        # Obtain a name for the current experiment
+        self.name = kwargs.get('name') or self.build_name()
+
+        # Lazily loads the logger
+        self.logger.debug('Model name: {}'.format(self.name))
+
+        self.exp_helper = ExperimentSetup(logger=self.logger)
+
+        # Prepare Trainer to be ready for running!
+        self.prepare()
+
+    @property
+    def logger(self):
+        """
+
+        Returns
+        -------
+
+        """
+        if self._logger is None:
+            # =========== Setting the Application logger ==============
+            # put the  version and the model_name to the env variables
+            # in order to be able to use it throughout all the modules
+            self._logger = app_logger
+            self._logger.info('Application logger initialized')
+            # =========================================================
+
+        return self._logger
+
+    @property
+    def hyperparams(self):
+        """
+
+        Returns
+        -------
+
+        """
+        out = {
+            'dataset': dict(**self.dataset_params),
+            'model': dict(**self.model_params),
+            'criterion': dict(**self.criterion_params),
+            'optimizer': dict(**self.optimizer_params),
+            'training': dict(**self.training_params),
+            'metrics': self.metrics_params
+        }
+
+        return out
+
+    def build_name(self) -> str:
+        """
+        This method creates the models name based on the date of the experiment
+        Returns
+        -------
+
+        """
+        name = '{}-{}'.format(
+            datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
+
+        return name
+
+    def prepare(self):
         pass
 
     def run(self):
