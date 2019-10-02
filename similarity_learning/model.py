@@ -9,11 +9,14 @@ from tensorflow.keras import models, optimizers
 from tensorflow.keras.layers import Reshape, Conv2D, MaxPooling2D, Flatten, \
     Dense, Input, Lambda, Dropout, Embedding, LSTM
 from tensorflow.keras.optimizers import Adadelta
+from tensorflow.keras.utils import plot_model
 
 from similarity_learning.config import DirConf
 from similarity_learning.distance import exponent_neg_manhattan_distance
 from similarity_learning.utils import camel_to_underscore
 
+
+# import pydot
 
 class BaseNetMeta(type):
     """Meta class for injecting class method properties to BaseNet class"""
@@ -80,15 +83,32 @@ class BaseNet(metaclass=BaseNetMeta):
 
         """
         weights_path = path if path else self.default_path
-        # torch.save(self.state_dict(), weights_path)
         self.__model.save_weights(filepath=weights_path,
                                   overwrite=True)
 
     def build(self):
         pass
 
+    def compile(self):
+        pass
+
+    def fit(self):
+        pass
+
+    def evaluate(self):
+        pass
+
+    def predict(self):
+        pass
+
     def plot_summary(self):
         print(self.__model.summary())
+
+    def plot_model_architecture(self, fname: str):
+        plot_model(self.__model,
+                   to_file=fname,
+                   show_shapes=True,
+                   show_layer_names=True)
 
 
 class SimilarityV1:
