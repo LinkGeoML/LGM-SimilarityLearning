@@ -11,6 +11,8 @@ class NgramTokenizer(Tokenizer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+        self.maxlen = kwargs.get('maxlen', None)
+
     def create_ngrams(self, texts, n: int = 3, step=1) -> List[List[str]]:
         output = list()
 
@@ -20,6 +22,12 @@ class NgramTokenizer(Tokenizer):
             output.append(text)
 
         return output
+
+    def pad(self, texts):
+        return pad_sequences(texts,
+                             maxlen=self.maxlen,
+                             padding='post',
+                             truncating='post')
 
 
 def raw_code():
@@ -92,6 +100,7 @@ if __name__ == "__main__":
                                filters='!"#$%&()*+,-./:;=?@[\\]^_`{|}~\t\n', )
 
     toponyms = tokeniZer.create_ngrams(texts=toponyms)
+    print(toponyms)
     tokeniZer.fit_on_texts(toponyms)
     sequences = tokeniZer.texts_to_sequences(toponyms)
     print(toponyms)
