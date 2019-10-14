@@ -1,6 +1,6 @@
 import os
 import random
-from typing import List, Tuple, NoReturn
+from typing import List, Tuple, NoReturn, Optional
 
 import editdistance
 import numpy as np
@@ -8,6 +8,7 @@ import pandas as pd
 from tensorflow.keras.utils import Sequence
 
 from similarity_learning.config import DirConf
+from similarity_learning.utils_text import NgramTokenizer
 
 pd.set_option('display.expand_frame_repr', False)
 
@@ -19,18 +20,20 @@ class SimpleSampler(Sequence):
 
     """
 
-    def __init__(self, toponyms, variations, n_positives: int = 1,
-                 n_negatives: int = 3, neg_samples_size: int = 30,
-                 shuffle: bool = True, batch_size=128) -> NoReturn:
+    def __init__(self, toponyms, variations, batch_size=128,
+                 tokenizer: Optional[NgramTokenizer] = None,
+                 n_positives: int = 1, n_negatives: int = 3,
+                 neg_samples_size: int = 30, shuffle: bool = True) -> NoReturn:
         """
 
         :param toponyms:
         :param variations:
+        :param batch_size:
+        :param tokenizer:
         :param n_positives:
         :param n_negatives:
         :param neg_samples_size:
         :param shuffle:
-        :param batch_size:
         """
         assert neg_samples_size % 2 == 0
         assert batch_size // (n_negatives + n_positives) % 2 == 0
@@ -50,6 +53,8 @@ class SimpleSampler(Sequence):
 
         self.shuffle = shuffle
         self.on_epoch_end()
+
+        self.tokenizer = tokenizer
 
     def __len__(self):
         """
@@ -134,8 +139,8 @@ class SimpleSampler(Sequence):
 
         return np.array(left), np.array(right), np.array(targets)
 
-    def __getitem__(self, index) -> Tuple[np.ndarray,
-                                          np.ndarray,
+    def __getitem__(self, index) -> Tuple[Tuple[np.ndarray,
+                                                np.ndarray],
                                           np.ndarray]:
         """
         Generate one batch of data
@@ -154,18 +159,26 @@ class SimpleSampler(Sequence):
             right.append(x_right)
             targets.append(y_targets)
 
-        return (np.concatenate(left),
-                np.concatenate(right),
+        if self.tokenizer:
+            left = self.tokenizer.create_ngrams(texts=left)
+            left = self.tokenizer.pad(right)
+
+            right = self.tokenizer.create_ngrams(texts=right)
+            right = self.tokenizer.pad(right)
+
+        return ((np.concatenate(left),
+                 np.concatenate(right)),
                 np.concatenate(targets))
 
-    def on_epoch_end(self):
-        """
-        Updates indexes after each epoch
-        :return:
-        """
-        self.indexes = np.arange(len(self.toponyms))
-        if self.shuffle:
-            np.random.shuffle(self.indexes)
+
+def on_epoch_end(self):
+    """
+    Updates indexes after each epoch
+    :return:
+    """
+    self.indexes = np.arange(len(self.toponyms))
+    if self.shuffle:
+        np.random.shuffle(self.indexes)
 
 
 # # Parameters
@@ -200,6 +213,13 @@ if __name__ == "__main__":
     df = df.where((pd.notnull(df)), None)
     df.sort_values(['toponym', 'variations'], inplace=True)
     df.reset_index(drop=True, inplace=True)
+
+    tokeniZer = NgramTokenizer(num_words=10,
+                               oov_token='<OOV>',
+                               lower=True,
+                               char_level=False,
+                               split=' ',
+                               filters='!"#$%&()*+,-./:;=?@[\\]^_`{|}~\t\n', )
 
     df['variations'] = df['variations'].apply(
         lambda x: x.split(' || ') if x else [])
