@@ -96,13 +96,13 @@ class SimpleSampler(Sequence):
         :param index:
         :return:
         """
-        n = self.neg_samples_size // 2
 
-        bottom = max(0, index - n)
-        top = min(index + n + 1, len(self.toponyms))
+        neg_samples_indexes = list(np.random.choice(self.toponyms.index,
+                                                    size=self.neg_samples_size,
+                                                    replace=True))
 
-        neg_samples_indexes = list(range(bottom, top))
-        neg_samples_indexes.remove(index)
+        if index in neg_samples_indexes:
+            neg_samples_indexes.remove(index)
 
         anchor = self.toponyms[index]
         negatives = self.toponyms[neg_samples_indexes]
@@ -170,15 +170,14 @@ class SimpleSampler(Sequence):
                  np.concatenate(right)),
                 np.concatenate(targets))
 
-
-def on_epoch_end(self):
-    """
-    Updates indexes after each epoch
-    :return:
-    """
-    self.indexes = np.arange(len(self.toponyms))
-    if self.shuffle:
-        np.random.shuffle(self.indexes)
+    def on_epoch_end(self):
+        """
+        Updates indexes after each epoch
+        :return:
+        """
+        self.indexes = np.arange(len(self.toponyms))
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
 
 
 # # Parameters
@@ -236,3 +235,5 @@ if __name__ == "__main__":
 
     for i in range(len(sampler)):
         t = sampler.__getitem__(i)
+        print(t)
+        break
