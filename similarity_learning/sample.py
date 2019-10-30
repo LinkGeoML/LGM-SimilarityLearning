@@ -20,10 +20,11 @@ class SimpleSampler(Sequence):
 
     """
 
-    def __init__(self, toponyms, variations, batch_size=128,
-                 tokenizer: Optional[NgramTokenizer] = None,
-                 n_positives: int = 1, n_negatives: int = 3,
-                 neg_samples_size: int = 30, shuffle: bool = True) -> NoReturn:
+    def __init__(
+            self, toponyms: pd.Series, variations: pd.Series, batch_size=128,
+            tokenizer: Optional[NgramTokenizer] = None, n_positives: int = 1,
+            n_negatives: int = 3, neg_samples_size: int = 30,
+            shuffle: bool = True) -> NoReturn:
         """
 
         :param toponyms:
@@ -161,7 +162,7 @@ class SimpleSampler(Sequence):
 
         if self.tokenizer:
             left = self.tokenizer.create_ngrams(texts=left)
-            left = self.tokenizer.pad(right)
+            left = self.tokenizer.pad(left)
 
             right = self.tokenizer.create_ngrams(texts=right)
             right = self.tokenizer.pad(right)
@@ -178,6 +179,67 @@ class SimpleSampler(Sequence):
         self.indexes = np.arange(len(self.toponyms))
         if self.shuffle:
             np.random.shuffle(self.indexes)
+
+
+class SimpleSamplerV2(SimpleSampler):
+    """
+    The difference with the SimpleSampler is on the negative sampling.
+    Instead of taking a random sample from all the indexes, we filter the
+    indexes to those that have the same length with the toponym.
+    """
+
+    def __init__(
+            self, toponyms: pd.Series, variations: pd.Series, batch_size=128,
+            tokenizer: Optional[NgramTokenizer] = None, n_positives: int = 1,
+            n_negatives: int = 3, neg_samples_size: int = 30,
+            shuffle: bool = True) -> NoReturn:
+        """
+
+        :param toponyms:
+        :param variations:
+        :param batch_size:
+        :param tokenizer:
+        :param n_positives:
+        :param n_negatives:
+        :param neg_samples_size:
+        :param shuffle:
+        """
+        super().__init__(toponyms, variations, batch_size, tokenizer,
+                         n_positives, n_negatives, neg_samples_size, shuffle)
+
+        self.length_indexes = self.toponyms.str.len().to_frame().groupby(
+            'name').groups
+
+        # print(self.length_indexes.get(3))
+
+    def get_negative_samples(self, index: int) -> List[str]:
+        """
+        :param index:
+        :return:
+        """
+        anchor = self.toponyms[index]
+
+        # calculate the anchor length
+        anchor_length = len(anchor)
+        # get the indexes of the toponyms that have the same index
+        same_length_indexes = self.length_indexes.get(anchor_length)
+
+        # get k samples from the toponyms that share the same length
+        neg_samples_indexes = list(np.random.choice(same_length_indexes,
+                                                    size=self.neg_samples_size,
+                                                    replace=True))
+
+        if index in neg_samples_indexes:
+            neg_samples_indexes.remove(index)
+
+        negatives = self.toponyms[neg_samples_indexes]
+
+        # sort the samples, by calculating the edit distance between the
+        # anchor and the negative samples. Minimum distance first.
+        negatives = sorted(negatives,
+                           key=lambda x: editdistance.eval(anchor, x))
+
+        return negatives[:self.n_negatives]
 
 
 # # Parameters
@@ -207,10 +269,10 @@ class SimpleSampler(Sequence):
 #                     use_multiprocessing=True,
 #                     workers=6)
 if __name__ == "__main__":
-    path = os.path.join(DirConf.DATA_DIR, 'all_countries_cleaned.csv')
-    df = pd.read_csv(path, nrows=128)
+    path = os.path.join(DirConf.DATA_DIR, 'all_countries_filtered_columns.csv')
+    df = pd.read_csv(path, nrows=1000)
     df = df.where((pd.notnull(df)), None)
-    df.sort_values(['toponym', 'variations'], inplace=True)
+    df.sort_values(['name', 'alternate_names'], inplace=True)
     df.reset_index(drop=True, inplace=True)
 
     tokeniZer = NgramTokenizer(num_words=10,
@@ -220,18 +282,18 @@ if __name__ == "__main__":
                                split=' ',
                                filters='!"#$%&()*+,-./:;=?@[\\]^_`{|}~\t\n', )
 
-    df['variations'] = df['variations'].apply(
+    df['alternate_names'] = df['alternate_names'].apply(
         lambda x: x.split(' || ') if x else [])
 
-    params = {'toponyms': df['toponym'],
-              'variations': df['variations'],
+    params = {'toponyms': df['name'],
+              'variations': df['alternate_names'],
               'n_positives': 1,
               'n_negatives': 3,
               'neg_samples_size': 30,
               'batch_size': 16,
               'shuffle': True}
 
-    sampler = SimpleSampler(**params)
+    sampler = SimpleSamplerV2(**params)
 
     for i in range(len(sampler)):
         t = sampler.__getitem__(i)
