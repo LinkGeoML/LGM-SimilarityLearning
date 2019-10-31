@@ -1,14 +1,17 @@
+import io
+import json
+import os
 from typing import List
 
-import numpy as np
-import pandas as pd
 from more_itertools import windowed
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
 
+from similarity_learning.config import DirConf
+
 
 class NgramTokenizer(Tokenizer):
-    def __init__(self, maxlen, **kwargs):
+    def __init__(self, maxlen=None, **kwargs):
         """
 
         :param maxlen:
@@ -105,64 +108,83 @@ class NgramTokenizer(Tokenizer):
                              padding='post',
                              truncating='post')[0]
 
+    def to_json(self, **kwargs):
+        """Returns a JSON string containing the tokenizer configuration.
+        To load a tokenizer from a JSON string, use
+        `keras.preprocessing.text.tokenizer_from_json(json_string)`.
 
-def raw_code():
-    max_features = 20_000
-    X_train = pd.DataFrame({'toponymX1': [],
-                            'toponymX2': []})
+        # Arguments
+            **kwargs: Additional keyword arguments
+                to be passed to `json.dumps()`.
 
-    X_val = pd.DataFrame({'toponymX1': [],
-                          'toponymX2': []})
+        # Returns
+            A JSON string containing the tokenizer configuration.
+        """
+        config = self.get_config()
+        config['maxlen'] = self.maxlen
 
-    tokenizer = Tokenizer(num_words=max_features,
-                          oov_token='<OOV>',
-                          lower=True,
-                          char_level=False)
+        tokenizer_config = {
+            'class_name': self.__class__.__name__,
+            'config': config
+        }
+        return json.dumps(tokenizer_config, **kwargs)
 
-    # fitting on the train dataset only
-    tokenizer.fit_on_texts(
-        list(X_train['toponymX1']) + list(X_train['toponymX2']))
+    def save(self):
+        """
 
-    X_train['toponymX1_seqs'] = tokenizer.texts_to_sequences(
-        X_train['toponymX1'])
-    X_train['toponymX2_seqs'] = tokenizer.texts_to_sequences(
-        X_train['toponymX2'])
+        :return:
+        """
+        tokenizer_json = self.to_json()
 
-    X_val['toponymX1_seqs'] = tokenizer.texts_to_sequences(X_val['toponymX1'])
-    X_val['toponymX2_seqs'] = tokenizer.texts_to_sequences(X_val['toponymX2'])
+        path = os.path.join(DirConf.MODELS_DIR, 'tokenizer.json')
 
-    all_train_lengths = list(X_train.toponymX1_seqs.apply(len)) + list(
-        X_train.toponymX2_seqs.apply(len))
+        with io.open(path, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(tokenizer_json, ensure_ascii=True))
 
-    max_len = int(np.percentile(all_train_lengths, q=90))
-    print('Max Length: {}'.format(max_len))
+    @staticmethod
+    def tokenizer_from_json(json_string):
+        """
+        Parses a JSON tokenizer configuration file and returns a
+        tokenizer instance.
 
-    X_train_t1 = pad_sequences(X_train['toponymX1_seqs'],
-                               maxlen=max_len,
-                               padding='post',
-                               truncating='post')
+        :param json_string: JSON string encoding a tokenizer configuration.
+        :return: A Keras Tokenizer instance
+        """
 
-    X_train_t2 = pad_sequences(X_train['toponymX2_seqs'],
-                               maxlen=max_len,
-                               padding='post',
-                               truncating='post')
+        tokenizer_config = json.loads(json_string)
 
-    X_val_t1 = pad_sequences(X_val['toponymX1_seqs'],
-                             maxlen=max_len,
-                             padding='post',
-                             truncating='post')
+        config = tokenizer_config.get('config')
 
-    X_val_t2 = pad_sequences(X_val['toponymX2_seqs'],
-                             maxlen=max_len,
-                             padding='post',
-                             truncating='post')
+        word_counts = json.loads(config.pop('word_counts'))
+        word_docs = json.loads(config.pop('word_docs'))
+        index_docs = json.loads(config.pop('index_docs'))
+        # Integer indexing gets converted to strings with json.dumps()
+        index_docs = {int(k): v for k, v in index_docs.items()}
+        index_word = json.loads(config.pop('index_word'))
+        index_word = {int(k): v for k, v in index_word.items()}
+        word_index = json.loads(config.pop('word_index'))
 
-    # Make sure everything is ok
-    assert X_train_t1.shape == X_train_t2.shape
-    assert X_val_t1.shape == X_val_t2.shape
+        tokenizer = NgramTokenizer(**config)
+        tokenizer.word_counts = word_counts
+        tokenizer.word_docs = word_docs
+        tokenizer.index_docs = index_docs
+        tokenizer.word_index = word_index
+        tokenizer.index_word = index_word
 
-    # assert len(X_train_t1) == len(y_train)
-    # assert len(X_train_q2) == len(y_train)
+        return tokenizer
+
+    def load(self):
+        """
+
+        :return:
+        """
+        path = os.path.join(DirConf.MODELS_DIR, 'tokenizer.json')
+
+        with open(path) as f:
+            json_string = json.load(f)
+            tokenizer = self.tokenizer_from_json(json_string)
+
+        return tokenizer
 
 
 if __name__ == "__main__":
@@ -193,3 +215,10 @@ if __name__ == "__main__":
     # x = NgramTokenizer(maxlen=None).texts_to_ngrams(texts=toponyms)
     # for i in zip(toponyms, x):
     #     print(i)
+    tokeniZer.save()
+
+    tokeniZer = NgramTokenizer().load()
+    print(tokeniZer)
+    print(tokeniZer.maxlen)
+    print(tokeniZer.num_words)
+    print(tokeniZer.word_counts)
