@@ -161,10 +161,10 @@ class SimpleSampler(Sequence):
             targets.append(y_targets)
 
         if self.tokenizer:
-            left = self.tokenizer.create_ngrams(texts=left)
+            left = self.tokenizer.texts_to_ngrams(texts=left)
             left = self.tokenizer.pad(left)
 
-            right = self.tokenizer.create_ngrams(texts=right)
+            right = self.tokenizer.texts_to_ngrams(texts=right)
             right = self.tokenizer.pad(right)
 
         return ((np.concatenate(left),
