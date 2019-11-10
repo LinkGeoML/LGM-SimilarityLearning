@@ -6,9 +6,12 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras import models, optimizers
-from tensorflow.keras.layers import Reshape, Conv2D, MaxPooling2D, Flatten, \
-    Dense, Input, Lambda, Dropout, Embedding, LSTM
-from tensorflow.keras.optimizers import Adadelta
+from tensorflow.keras.callbacks import (EarlyStopping, ReduceLROnPlateau,
+                                        ModelCheckpoint)
+from tensorflow.keras.layers import (Reshape, Conv2D, MaxPooling2D, Flatten,
+                                     Dense, Input, Lambda, Dropout, Embedding,
+                                     LSTM)
+from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import plot_model
 
 from similarity_learning.config import DirConf
@@ -46,7 +49,7 @@ class BaseNet(metaclass=BaseNetMeta):
     """
 
     def __init__(self):
-        self.__model: Optional[Model] = None
+        self._model: Optional[Model] = None
 
     @property
     def name(self) -> str:
@@ -67,9 +70,19 @@ class BaseNet(metaclass=BaseNetMeta):
         return self.__class__.default_path
 
     def load_weights(self, path: str = None):
+        """
+
+        Parameters
+        ----------
+        path
+
+        Returns
+        -------
+
+        """
         weights_path = path if path else self.default_path
 
-        self.__model.load_weights(filepath=weights_path, by_name=True)
+        self._model.load_weights(filepath=weights_path, by_name=True)
 
     def save_weights(self, path: str = None):
         """
@@ -83,29 +96,77 @@ class BaseNet(metaclass=BaseNetMeta):
 
         """
         weights_path = path if path else self.default_path
-        self.__model.save_weights(filepath=weights_path,
-                                  overwrite=True)
+        self._model.save_weights(filepath=weights_path, overwrite=True)
 
-    def build(self):
-        pass
+    def build(self, max_features: int, maxlen: int, emb_dim: int,
+              n_hidden: int = 50):
+        """
+
+        Parameters
+        ----------
+        max_features
+        maxlen
+        emb_dim
+        n_hidden
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
 
     def compile(self):
         pass
 
-    def fit(self):
-        pass
+    def fit(self, train_gen, val_gen, batch_size, e: int):
+        """
+
+        Parameters
+        ----------
+        train_gen
+        val_gen
+        batch_size
+        e
+
+        Returns
+        -------
+
+        """
+        raise NotImplementedError
 
     def evaluate(self):
         pass
 
     def predict(self):
+        """
+
+        Returns
+        -------
+
+        """
         pass
 
     def plot_summary(self):
-        print(self.__model.summary())
+        """
+
+        Returns
+        -------
+
+        """
+        print(self._model.summary())
 
     def plot_model_architecture(self, fname: str):
-        plot_model(self.__model,
+        """
+
+        Parameters
+        ----------
+        fname
+
+        Returns
+        -------
+
+        """
+        plot_model(self._model,
                    to_file=fname,
                    show_shapes=True,
                    show_layer_names=True)
@@ -211,35 +272,62 @@ class SimilarityV2(BaseNet):
     def __init__(self):
         super().__init__()
 
+    def set_callbacks(self):
+        """
+
+        Returns
+        -------
+
+        """
+        monitor = 'val_loss'
+        es = EarlyStopping(monitor=monitor,
+                           patience=3,
+                           verbose=1,
+                           restore_best_weights=True)
+
+        rop = ReduceLROnPlateau(monitor=monitor,
+                                patience=5,
+                                verbose=1)
+
+        checkpoint = ModelCheckpoint(filepath=self.default_path,
+                                     monitor=monitor,
+                                     verbose=1,
+                                     save_best_only=True,
+                                     save_weights_only=True,
+                                     load_weights_on_restart=False)
+
+        return [es, rop, checkpoint]
+
     def build(self,
-              max_seq_len,
-              emb_matrix,
+              max_features,
+              maxlen,
               emb_dim,
-              grad_clip_norm,
               n_hidden: int = 50) -> Model:
         """
 
-        :param max_seq_len:
-        :param emb_matrix:
-        :param emb_dim:
-        :param grad_clip_norm:
-        :param n_hidden:
-        :return:
+        Parameters
+        ----------
+        max_features
+        maxlen
+        emb_dim
+        n_hidden
+
+        Returns
+        -------
+
         """
         # The visible layer
-        left_input = Input(shape=(max_seq_len,),
-                           dtype='int32',
-                           name='left_input')
+        left_input = Input(shape=(maxlen,), dtype='int32', name='left_input')
 
-        right_input = Input(shape=(max_seq_len,),
-                            dtype='int32',
-                            name='right_input')
+        right_input = Input(shape=(maxlen,), dtype='int32', name='right_input')
 
-        embedding_layer = Embedding(len(emb_matrix),
-                                    emb_dim,
-                                    weights=[emb_matrix],
-                                    input_length=max_seq_len,
-                                    trainable=False,
+        # input_dim: int > 0. Size of the vocabulary,
+        #       i.e. maximum integer index + 1.
+        #     output_dim: int >= 0. Dimension of the dense embedding.
+        embedding_layer = Embedding(input_dim=max_features,
+                                    output_dim=emb_dim,
+                                    trainable=True,
+                                    mask_zero=True,
                                     name='emb_layer')
 
         # Embedded version of the inputs
@@ -261,12 +349,55 @@ class SimilarityV2(BaseNet):
         malstm = Model(inputs=[left_input, right_input],
                        outputs=[malstm_distance])
 
-        # Ada-delta optimizer, with gradient clipping by norm
-        optimizer = Adadelta(clipnorm=grad_clip_norm)
-
-        malstm.compile(loss='mean_squared_error',
-                       optimizer=optimizer,
-                       metrics=['accuracy'])
-
-        self.__model = malstm
+        self._model = malstm
         return malstm
+
+    def compile(self):
+        """
+
+        Returns
+        -------
+
+        """
+        # # Ada-delta optimizer, with gradient clipping by norm
+        # optimizer = Adadelta()
+        #
+        # self._model.compile(loss='mean_squared_error',
+        #                optimizer=optimizer,
+        #                metrics=['accuracy'])
+        #
+        # Ada-delta optimizer, with gradient clipping by norm
+        optimizer = Adam()
+
+        self._model.compile(loss='binary_crossentropy',
+                            optimizer=optimizer,
+                            metrics=['accuracy'])
+
+    def fit(self, train_gen, val_gen, batch_size, e: int,
+            multi_process: bool = False):
+        """
+
+        Parameters
+        ----------
+        train_gen
+        val_gen
+        batch_size
+        e
+        multi_process
+
+        Returns
+        -------
+
+        """
+
+        history = self._model.fit_generator(
+            train_gen,
+            steps_per_epoch=len(train_gen),
+            verbose=1,
+            validation_data=val_gen,
+            validation_steps=len(val_gen),
+            use_multiprocessing=multi_process,
+            callbacks=self.set_callbacks(),
+            epochs=e)
+
+        return history
