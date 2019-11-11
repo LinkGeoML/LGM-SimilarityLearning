@@ -287,6 +287,8 @@ class Sampler(Sequence):
         del self.data
         self.on_epoch_end()
 
+        self.steps_per_epoch = len(self.names) // self.n_samples
+
     def __len__(self):
         """
         Denotes the number of batches per epoch
