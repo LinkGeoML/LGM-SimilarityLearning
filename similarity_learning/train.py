@@ -273,7 +273,7 @@ class Trainer:
         history = self.model.fit(train_gen=self.train_sampler,
                                  val_gen=self.val_sampler,
                                  batch_size=self.batch_size,
-                                 e=10,
+                                 e=3,
                                  multi_process=False)
 
         return history
@@ -294,8 +294,8 @@ class Trainer:
 
 if __name__ == "__main__":
     trainer = Trainer(save_tokenizer=True,
-                      n_rows=500_000,
+                      n_rows=None,
                       maxlen=30,
                       verbose=0,
-                      num_words=30_000)
+                      num_words=50_000)
     trainer.run()
