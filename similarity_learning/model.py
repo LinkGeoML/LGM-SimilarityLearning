@@ -1,12 +1,12 @@
 import os
 from typing import Optional
 
-from tensorflow.keras import Model
+from tensorflow.keras import Model, Sequential
 from tensorflow.keras import models
 from tensorflow.keras.layers import (Input, Lambda, Embedding)
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import plot_model
-from tensorflow.python.keras.callbacks import (EarlyStopping, ReduceLROnPlateau,
+from tensorflow.python.keras.callbacks import (EarlyStopping,
+                                               ReduceLROnPlateau,
                                                ModelCheckpoint, TensorBoard)
 
 from similarity_learning.config import DirConf
@@ -43,7 +43,7 @@ class BaseNet(metaclass=BaseNetMeta):
     basic model operations.
     """
 
-    def __init__(self, encoder):
+    def __init__(self, encoder: Sequential):
         self._model: Optional[Model] = None
         self.encoder = encoder
 
@@ -110,27 +110,6 @@ class BaseNet(metaclass=BaseNetMeta):
 
         """
         raise NotImplementedError
-
-    def compile(self):
-        """
-
-        Returns
-        -------
-
-        """
-        # # Ada-delta optimizer, with gradient clipping by norm
-        # optimizer = Adadelta()
-        #
-        # self._model.compile(loss='mean_squared_error',
-        #                optimizer=optimizer,
-        #                metrics=['accuracy'])
-        #
-        # Ada-delta optimizer, with gradient clipping by norm
-        optimizer = Adam()
-
-        self._model.compile(loss='binary_crossentropy',
-                            optimizer=optimizer,
-                            metrics=['accuracy'])
 
     def set_callbacks(self):
         """
@@ -218,7 +197,7 @@ class BaseNet(metaclass=BaseNetMeta):
                    show_layer_names=True)
 
     def evaluate(self, test_X, test_Y):
-        return self.__model.evaluate(test_X, test_Y)
+        return self._model.evaluate(test_X, test_Y)
 
     def predict(self, X):
         predictions = self._model.predict(X)
@@ -236,7 +215,13 @@ class BaseNet(metaclass=BaseNetMeta):
 
 class SiameseNet(BaseNet):
 
-    def __init__(self, encoder):
+    def __init__(self, encoder: Sequential):
+        """
+
+        Parameters
+        ----------
+        encoder
+        """
         super().__init__(encoder)
 
     def build(self,
@@ -266,7 +251,8 @@ class SiameseNet(BaseNet):
         #  i.e. maximum integer index + 1.
         #  output_dim: int >= 0. Dimension of the dense embedding.
         embedding_layer = Embedding(
-            input_dim=max_features + 1, output_dim=emb_dim, trainable=True, mask_zero=True, name='emb_layer')
+            input_dim=max_features + 1, output_dim=emb_dim, trainable=True,
+            mask_zero=True, name='emb_layer')
 
         # Embedded version of the inputs
         encoded_left = embedding_layer(left_input)
