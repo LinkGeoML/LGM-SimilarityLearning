@@ -19,6 +19,7 @@ class NgramTokenizer(Tokenizer):
         """
         super().__init__(**kwargs)
         self.maxlen = maxlen
+        self.name = f'tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
 
     @staticmethod
     def get_ngrams(text: str, n: int = 3, step=1) -> str:
@@ -136,7 +137,7 @@ class NgramTokenizer(Tokenizer):
         """
         tokenizer_json = self.to_json()
 
-        path = os.path.join(DirConf.MODELS_DIR, 'tokenizer.json')
+        path = os.path.join(DirConf.MODELS_DIR, self.name)
 
         with io.open(path, 'w', encoding='utf-8') as f:
             f.write(json.dumps(tokenizer_json, ensure_ascii=True))
@@ -178,7 +179,7 @@ class NgramTokenizer(Tokenizer):
 
         :return:
         """
-        path = os.path.join(DirConf.MODELS_DIR, 'tokenizer.json')
+        path = os.path.join(DirConf.MODELS_DIR, self.name)
 
         with open(path) as f:
             json_string = json.load(f)
