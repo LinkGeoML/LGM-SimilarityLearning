@@ -1,9 +1,9 @@
 dataset:
-  name: 'similarity_dataset'
-  train_path: 'data/train.csv'
-  val_path: 'data/val.csv'
+  name: 'unbiased_preshuffled_dataset-string-similarity-global-train-original.csv'
+#  train_path: 'data/train.csv'
+#  val_path: 'data/val.csv'
 model:
-  name: 'similarity_v1'
+  name: 'similarity_v2'
   num_classes: 2
 criterion:
   name: 'cross_entropy_loss'
@@ -12,7 +12,7 @@ optimizer:
   lr: 0.001
 training:
   batch_size: 128
-  num_epochs: 10
+  num_epochs: 30
   num_workers: 8
 metrics:
   accuracy: 'primary'
