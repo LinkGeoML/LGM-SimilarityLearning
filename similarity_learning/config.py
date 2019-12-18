@@ -45,6 +45,7 @@ class DirConf:
     DATA_DIR = 'data'
     MODELS_DIR = 'models'
     REPORTS_DIR = 'reports'
+    LOG_DIR = 'log'
 
 
 class ModelConf:
@@ -101,7 +102,7 @@ else:
 class LoggerConf:
     """Logger Configuration class"""
 
-    LOG_DIR = 'log'
+    LOG_DIR = DirConf.LOG_DIR
 
     APP_LOG_DIR = os.path.join(LOG_DIR, 'app')
 
