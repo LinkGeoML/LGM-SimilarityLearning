@@ -25,6 +25,7 @@ pytest-env = "*"
 pytest-cov = "*"
 pytest-mock = "*"
 pycodestyle = "*"
+editdistance = "*"
 
 [requires]
 python_version = "3.7"
