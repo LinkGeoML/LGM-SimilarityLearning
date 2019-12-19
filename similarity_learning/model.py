@@ -3,7 +3,7 @@ from typing import Optional
 
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras import models
-from tensorflow.keras.layers import (Input, Lambda, Embedding)
+from tensorflow.keras.layers import Input, Lambda, Embedding, Dense
 from tensorflow.keras.utils import plot_model
 from tensorflow.python.keras.callbacks import (EarlyStopping,
                                                ReduceLROnPlateau,
@@ -272,6 +272,76 @@ class SiameseNet(BaseNet):
 
         # Pack it all up into a model
         model = Model(inputs=[left_input, right_input], outputs=[distance])
+
+        self._model = model
+
+        print(model.summary())
+        return model
+
+
+class SiameseNetV2(BaseNet):
+
+    def __init__(self, encoder: Sequential):
+        """
+
+        Parameters
+        ----------
+        encoder
+        """
+        super().__init__(encoder)
+
+    def build(self,
+              max_features,
+              maxlen,
+              emb_dim,
+              n_hidden: int = 50) -> Model:
+        """
+
+        Parameters
+        ----------
+        max_features
+        maxlen
+        emb_dim
+        n_hidden
+
+        Returns
+        -------
+
+        """
+        # The visible layer
+        left_input = Input(shape=(maxlen,), dtype='int32', name='left_input')
+
+        right_input = Input(shape=(maxlen,), dtype='int32', name='right_input')
+
+        # input_dim: int > 0. Size of the vocabulary,
+        #  i.e. maximum integer index + 1.
+        #  output_dim: int >= 0. Dimension of the dense embedding.
+        embedding_layer = Embedding(
+            input_dim=max_features + 1, output_dim=emb_dim, trainable=True,
+            mask_zero=True, name='emb_layer')
+
+        # Embedded version of the inputs
+        encoded_left = embedding_layer(left_input)
+        encoded_right = embedding_layer(right_input)
+
+        # Since this is a siamese network, both sides share the same encoder
+        shared_encoder = self.encoder(n_hidden)
+
+        # # Since this is a siamese network, both sides share the same encoder
+        left_output = shared_encoder(encoded_left)
+        right_output = shared_encoder(encoded_right)
+
+        # Calculates the distance between the vectors
+        distance = Lambda(
+            function=lambda tensors: exponent_neg_manhattan_distance(tensors),
+            output_shape=lambda x: (x[0][0], 1))([left_output, right_output])
+
+        # Add a dense layer with a sigmoid unit to generate the similarity
+        # score
+        prediction = Dense(1, activation='sigmoid')(distance)
+
+        # Pack it all up into a model
+        model = Model(inputs=[left_input, right_input], outputs=[prediction])
 
         self._model = model
 
