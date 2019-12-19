@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from tensorflow.keras.utils import Sequence
 
-from similarity_learning.utils_text import NgramTokenizer
+from similarity_learning.tokenize import NgramTokenizer
 
 pd.set_option('display.expand_frame_repr', False)
 
