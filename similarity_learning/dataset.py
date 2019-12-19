@@ -278,7 +278,7 @@ class Dataset:
 
         return self.train_sampler, self.val_sampler
 
-    def run(self):
+    def run_data_preparation(self):
         """
 
         Returns
@@ -297,4 +297,4 @@ if __name__ == "__main__":
         save_tokenizer=True,
         n_rows=10000,
         verbose=0)
-    trainer.run()
+    trainer.run_data_preparation()
