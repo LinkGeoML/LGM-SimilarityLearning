@@ -7,7 +7,7 @@ from logging import getLogger
 from similarity_learning.config import LoggerConf
 
 
-def setup_app_logger(name: str = None):
+def setup_exp_logger(name: str = None):
     """
     Set appropriate name for module/class logger
     Configures the logger
@@ -55,4 +55,4 @@ class DummyLogger:
         pass
 
 
-app_logger = setup_app_logger(name='app_logger')
+exp_logger = setup_exp_logger(name='app_logger')
