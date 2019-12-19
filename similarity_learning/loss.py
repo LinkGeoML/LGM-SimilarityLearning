@@ -2,9 +2,18 @@ from tensorflow.keras import backend as K
 
 
 def contrastive_loss(y_true, y_pred):
-    '''Contrastive loss from Hadsell-et-al.'06
+    """
+    Contrastive loss from Hadsell-et-al.'06
     http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
-    '''
+    Parameters
+    ----------
+    y_true
+    y_pred
+
+    Returns
+    -------
+
+    """
     margin = 1
     square_pred = K.square(y_pred)
     margin_square = K.square(K.maximum(margin - y_pred, 0))
