@@ -19,7 +19,7 @@ def l1_distance(tensors):
     return K.abs(tensors[0] - tensors[1])
 
 
-def euclidean_distance(tensors):
+def l2_distance(tensors):
     x, y = tensors
     sum_square = K.sum(K.square(x - y), axis=1, keepdims=True)
     return K.sqrt(K.maximum(sum_square, K.epsilon()))
@@ -27,4 +27,14 @@ def euclidean_distance(tensors):
 
 def eucl_dist_output_shape(shapes):
     shape1, shape2 = shapes
-    return (shape1[0], 1)
+    return shape1[0], 1
+
+#
+# # Add a customized layer to compute the absolute difference between the encodings
+# distance_layer = Lambda(lambda tensors: l1_distance(tensors))
+# distance = distance_layer([encoded_l, encoded_r])
+#
+# # Calculates the distance between the vectors
+# distance_layer = Lambda(
+#     lambda tensors: exponent_neg_manhattan_distance(tensors))
+# distance = distance_layer([encoded_l, encoded_r])
