@@ -1,0 +1,36 @@
+dataset:
+  name: 'unbiased_preshuffled_dataset-string-similarity-global-train-original.csv'
+  max_chars: 32
+  n_rows: -1
+  val_size: 0.25
+tokenizer:
+  name: ngram_tokenizer
+  maxlen: 30
+  num_words: 50000
+train_sampler:
+  name: samplerv2
+  batch_size: 16
+  n_negatives: 3
+  neg_samples_size: 30
+  shuffle: true
+val_sampler:
+  name: samplerv2
+  batch_size: 16
+  n_negatives: 3
+  neg_samples_size: 30
+  shuffle: true
+model:
+  name: 'siamese_net'
+  encoder: 'lstm1'
+criterion:
+  name: 'binary_crossentropy'
+optimizer:
+  name: 'adam'
+  lr: 0.001
+metrics:
+  accuracy: 'primary'
+  AUC: 'primary'
+training:
+  num_epochs: 30
+  num_workers: 8
+  multi_process: false
