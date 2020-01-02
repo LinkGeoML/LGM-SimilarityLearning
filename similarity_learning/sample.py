@@ -432,58 +432,280 @@ class Sampler(Sequence):
             np.random.shuffle(self.indexes)
 
 
-# # Parameters
-# params = {'dim': (32,32,32),
-#           'batch_size': 64,
-#           'n_classes': 6,
-#           'n_channels': 1,
-#           'shuffle': True}
+class SamplerV2(Sequence):
+    def __init__(self, data, batch_size=32, n_negatives: int = 3,
+                 neg_samples_size: int = 30, shuffle: bool = True,
+                 tokenizer: Optional[NgramTokenizer] = None) -> NoReturn:
+        """
 
-# Datasets
-# partition = # IDs
-# labels = # Labels
+        Parameters
+        ----------
+        data
+        batch_size :
+            This is not the actual batch size. It's the number of indexes taken
+            for each step for each epoch
 
-# Generators
-# training_generator = DataGenerator(partition['train'], labels, **params)
-# validation_generator = DataGenerator(partition['validation'], labels, **params)
+        n_negatives
+        neg_samples_size
+        shuffle
+        tokenizer
+        """
 
-#
-# # Design model
-# model = Sequential()
-# [...] # Architecture
-# model.compile()
+        assert neg_samples_size % 2 == 0
 
-# Train model on dataset
-# model.fit_generator(generator=training_generator,
-#                     validation_data=validation_generator,
-#                     use_multiprocessing=True,
-#                     workers=6)
+        self.data = data
+
+        self.names = self.data['name']  # str
+        self.alternate_names = self.data['alternate_names']  # list of str
+        self.name_seqs = self.data['toponym_seqs']
+        self.alt_name_seqs = self.data['variations_seqs']
+
+        self.n_positives = self.alternate_names.apply(len).sum()
+        self.n_negatives = n_negatives * self.n_positives
+
+        self.total_samples = self.n_positives + n_negatives
+
+        self.neg_samples_size = neg_samples_size
+
+        self.indexes: Optional[np.ndarray] = None
+
+        self.shuffle = shuffle
+
+        self.tokenizer = tokenizer
+
+        self.length_indexes = self.data.groupby('len_name').groups
+
+        del self.data
+        self.on_epoch_end()
+
+        self.batch_size = batch_size
+
+        self.steps_per_epoch = len(self.names) // self.batch_size
+
+    def __len__(self):
+        """
+        Denotes the number of batches per epoch
+
+        :return:
+        """
+        # we are diving by the number of samples instead of the batch size
+        # this is because for each row in the dataset, we create
+        # n_positives + n_negatives samples.
+        return self.steps_per_epoch
+
+    def get_positive_samples(self, index):
+        """
+        Given an anchor and it's variations, it calculates the Edit Distance
+        between the two, and selects those that have the maximum distance
+
+        In case the variations list is empty, then the anchor itself is
+        returned.
+
+        :param index: int
+        :return: List[List[int]
+        """
+
+        anchor_seq = self.name_seqs[index]
+        variations_seqs = self.alt_name_seqs[index]
+
+        if len(variations_seqs) > 0:
+            return variations_seqs
+
+        else:
+            return [anchor_seq]
+
+    def get_negative_samples(self, index: int, n_samples: int) -> List[str]:
+        """
+
+        Parameters
+        ----------
+        index
+        n_samples
+
+        Returns
+        -------
+
+        """
+        anchor = self.names[index]
+
+        # calculate the anchor length
+        anchor_length = len(anchor)
+
+        # get the indexes of the toponyms that have the same length -1
+        minus_1_length_indexes = self.length_indexes.get(anchor_length - 1, [])
+
+        # get the indexes of the toponyms that have the same length
+        same_length_indexes = self.length_indexes.get(anchor_length)
+
+        # get the indexes of the toponyms that have the same length + 1
+        plus_1_length_indexes = self.length_indexes.get(anchor_length + 1, [])
+
+        neg_samples_indexes = list()
+
+        denominator = 3
+
+        if len(minus_1_length_indexes) == 0:
+            denominator -= 1
+        else:
+            # Sample from the three pools
+            # get k/3 samples from the toponyms that share the same (length -1)
+            minus_one = list(np.random.choice(
+                minus_1_length_indexes,
+                size=self.neg_samples_size // denominator,
+                replace=True))
+            neg_samples_indexes.extend(minus_one)
+
+        if len(plus_1_length_indexes) == 0:
+            denominator -= 1
+        else:
+            # get k/3 samples from the toponyms that share the same length
+            plus_one = list(np.random.choice(
+                plus_1_length_indexes,
+                size=self.neg_samples_size // denominator,
+                replace=True))
+
+            neg_samples_indexes.extend(plus_one)
+
+        # get samples from the toponyms that share the same (length + 1)
+        same = list(np.random.choice(same_length_indexes,
+                                     size=self.neg_samples_size // denominator,
+                                     replace=True))
+
+        neg_samples_indexes.extend(same)
+
+        if index in neg_samples_indexes:
+            neg_samples_indexes.remove(index)
+
+        # get the negatives strings
+        negatives = list(self.names[neg_samples_indexes])
+        # get the negatives sequences for the same indexes
+        negatives_seqs = list(self.name_seqs[neg_samples_indexes])
+
+        # sort the samples, by calculating the edit distance between the
+        # anchor and the negative samples. Minimum distance first.
+        distances = [editdistance.eval(anchor, n) for n in negatives]
+
+        # indexes of the negatives for closest to furthest
+        indexes = np.argsort(distances)[:n_samples]
+
+        # for each index in the closest index get the sequence and not the
+        # name
+        negatives_seqs = [negatives_seqs[idx] for idx in indexes]
+
+        return negatives_seqs
+
+    def generate_samples(self, index):
+        """
+        Generates n_positives + n_negatives samples for a given index.
+        :return:
+        """
+
+        left = list()
+        right = list()
+
+        targets = list()
+
+        # the anchor sequence
+        anchor_seq = self.name_seqs[index]
+
+        # at least one sample
+        positives = self.get_positive_samples(index)
+
+        n_pos_samples = len(positives)
+        n_neg_samples = n_pos_samples * self.n_negatives
+        # at least one sample
+        negatives = self.get_negative_samples(index=index,
+                                              n_samples=n_neg_samples)
+
+        n_neg_samples = len(negatives)  # may end up being fewer than actual
+
+        total_index_samples = n_pos_samples + n_neg_samples
+
+        # fill up the anchor sequences `total_index_samples` for the left part
+        left.extend(total_index_samples * [anchor_seq])
+
+        # add the positives to the right bucket
+        right.extend(positives)
+        # add the 1's for the positive samples
+        targets.extend(n_pos_samples * [1])
+
+        # add the negatives to the right bucket
+        right.extend(negatives)
+        # add the 0's for the negative samples
+
+        targets.extend(n_neg_samples * [0])
+
+        return np.array(left), np.array(right), np.array(targets)
+
+    def __getitem__(self, index) -> Tuple[Tuple[np.ndarray,
+                                                np.ndarray],
+                                          np.ndarray]:
+        """
+        Generate one batch of data
+        :return:
+        """
+
+        # Generate indexes of the batch
+        indexes = self.indexes[
+                  index * self.batch_size: (index + 1) * self.batch_size]
+
+        left, right, targets = [], [], []
+
+        for index in indexes:
+            x_left, x_right, y_targets = self.generate_samples(index)
+            left.append(x_left)
+            right.append(x_right)
+            targets.append(y_targets)
+
+        if self.tokenizer:
+            left = self.tokenizer.texts_to_ngrams(texts=left)
+            left = self.tokenizer.pad(left)
+
+            right = self.tokenizer.texts_to_ngrams(texts=right)
+            right = self.tokenizer.pad(right)
+
+        return ((np.concatenate(left),
+                 np.concatenate(right)),
+                np.concatenate(targets))
+
+    def on_epoch_end(self):
+        """
+        Updates indexes after each epoch
+        :return:
+        """
+        self.indexes = np.arange(len(self.names))
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
+
+
 if __name__ == "__main__":
-    from similarity_learning import train
+    from similarity_learning.dataset import Dataset
 
-    trainer = train.Trainer(verbose=0)
-    trainer.run()
+    dataset = Dataset()
+    dataset.load_data()
+    dataset.split_data()
+    dataset.tokenize_data()
 
-    params = {'data': trainer.train,
-              'n_positives': 1,
+    params = {'data': dataset.train,
               'n_negatives': 3,
               'neg_samples_size': 30,
-              'batch_size': 256,
+              'batch_size': 16,
               'shuffle': False}
 
-    sampler = Sampler(**params)
-    print(sampler)
-    print(len(sampler))
+    sampler = SamplerV2(**params)
 
-    # for i in range(len(sampler)):
-    #     t = sampler.__getitem__(i)
-    #     print(t[0][0])
-    #     print()
-    #     print(t[0][1])
-    #     print()
-    #     print(t[1])
-    #     print(t[0][0].shape)
-    #     print(t[0][0].shape)
-    #     print(t[1].shape)
-    #
-    #     break
+    print('Steps: ', sampler.steps_per_epoch)
+    print('Names len: ', len(sampler.names))
+    # x = sampler.__getitem__(0)[1]
+    # print(len(x))
+
+    for i in range(len(sampler)):
+        t = sampler.__getitem__(i)
+        # print(t[0][0])
+        # print()
+        # print(t[0][1])
+        # print()
+        # print(t[1])
+        # print(t[0][0].shape)
+        # print(t[0][0].shape)
+        print(t[1].shape)
