@@ -343,7 +343,7 @@ if __name__ == "__main__":
         "train_sampler": {
             "name": "sampler",
             "batch_size": 2048,
-            "n_positives": 2,
+            "n_positives": 1,
             "n_negatives": 3,
             "neg_samples_size": 30,
             "shuffle": True
@@ -351,7 +351,7 @@ if __name__ == "__main__":
         "val_sampler": {
             "name": "sampler",
             "batch_size": 2048,
-            "n_positives": 2,
+            "n_positives": 1,
             "n_negatives": 3,
             "neg_samples_size": 30,
             "shuffle": True
