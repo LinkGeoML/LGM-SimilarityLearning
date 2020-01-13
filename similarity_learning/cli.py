@@ -5,6 +5,7 @@ import os
 import yaml
 
 from similarity_learning.experiment import Experiment
+from similarity_learning.scripts.handle_raw_dataset import RawDataPreprocessor
 
 
 class LGMInterface:
@@ -27,6 +28,10 @@ class LGMInterface:
             'train',
             help='triggers the training operation of the selected model')
 
+        self.dataset_parser = self.subparsers.add_parser(
+            'dataset',
+            help='triggers the raw data preprocessing')
+
     def run(self) -> None:
         """
         This method instantiates all previous methods in order to parse all
@@ -46,6 +51,23 @@ class LGMInterface:
             '--settings', type=str, default='similarity2.yml',
             help='path for YAML configuration file containing default params')
 
+        self.dataset_parser.add_argument(
+            '--dataset_name', type=str, default='allCountries.txt',
+            help='dataset name')
+
+        self.dataset_parser.add_argument(
+            '--n_alternates', type=int, default=1,
+            help='Minimum number of alternate names')
+
+        self.dataset_parser.add_argument(
+            '--only_latin', type=bool, default=False,
+            help='Whether to use only Latin Alphabet records')
+
+        self.dataset_parser.add_argument(
+            '--stratified_split', type=bool, default=False,
+            help='Whether to use stratified shuffle splint when breaking in'
+                 ' train-val-test sets')
+
         cmd_args = self.parser.parse_args()
 
         if cmd_args.action == 'train':
@@ -62,6 +84,16 @@ class LGMInterface:
             if cmd_args.action == 'train':
                 exp = Experiment(**experiment_params)
                 exp.run()
+
+        elif cmd_args.action == 'dataset':
+
+            options = {'fname': cmd_args.dataset_name,
+                       'n_alternates': cmd_args.n_alternates,
+                       'only_latin': cmd_args.only_latin,
+                       'stratified_split': cmd_args.stratified_split}
+
+            preprocessor = RawDataPreprocessor(**options)
+            preprocessor.run()
 
 
 if __name__ == "__main__":
