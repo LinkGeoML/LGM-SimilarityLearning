@@ -26,8 +26,8 @@ pytest-cov = "*"
 pytest-mock = "*"
 pycodestyle = "*"
 editdistance = "*"
-swifter = "*"
 distutils = "*"
+alphabet-detector = "*"
 
 [requires]
 python_version = "3.7"
