@@ -10,7 +10,84 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from similarity_learning.config import DirConf
 
 
-class NgramTokenizer(Tokenizer):
+class CustomTokenizer(Tokenizer):
+    def __init__(self, maxlen=None, **kwargs):
+        """
+
+        :param maxlen:
+        :param kwargs:
+        """
+        super().__init__(**kwargs)
+        self.maxlen = maxlen
+        self.name = f'tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+    def pad(self, seqs):
+        """
+
+        Parameters
+        ----------
+        seqs
+
+        Returns
+        -------
+
+        """
+        return pad_sequences(seqs,
+                             maxlen=self.maxlen,
+                             padding='post',
+                             truncating='post')
+
+    def pad_single(self, sequence):
+        """
+
+        Parameters
+        ----------
+        sequence
+
+        Returns
+        -------
+
+        """
+        return pad_sequences(sequences=[sequence],
+                             maxlen=self.maxlen,
+                             padding='post',
+                             truncating='post')[0]
+
+    def to_json(self, **kwargs):
+        """Returns a JSON string containing the tokenizer configuration.
+        To load a tokenizer from a JSON string, use
+        `keras.preprocessing.text.tokenizer_from_json(json_string)`.
+
+        # Arguments
+            **kwargs: Additional keyword arguments
+                to be passed to `json.dumps()`.
+
+        # Returns
+            A JSON string containing the tokenizer configuration.
+        """
+        config = self.get_config()
+        config['maxlen'] = self.maxlen
+
+        tokenizer_config = {
+            'class_name': self.__class__.__name__,
+            'config': config
+        }
+        return json.dumps(tokenizer_config, **kwargs)
+
+    def save(self):
+        """
+
+        :return:
+        """
+        tokenizer_json = self.to_json()
+
+        path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        with io.open(path, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(tokenizer_json, ensure_ascii=True))
+
+
+class NgramTokenizer(CustomTokenizer):
     def __init__(self, maxlen=None, **kwargs):
         """
 
@@ -96,51 +173,6 @@ class NgramTokenizer(Tokenizer):
             output.append(self.get_ngrams(text, n, step))
 
         return output
-
-    def pad(self, seqs):
-        return pad_sequences(seqs,
-                             maxlen=self.maxlen,
-                             padding='post',
-                             truncating='post')
-
-    def pad_single(self, sequence):
-        return pad_sequences(sequences=[sequence],
-                             maxlen=self.maxlen,
-                             padding='post',
-                             truncating='post')[0]
-
-    def to_json(self, **kwargs):
-        """Returns a JSON string containing the tokenizer configuration.
-        To load a tokenizer from a JSON string, use
-        `keras.preprocessing.text.tokenizer_from_json(json_string)`.
-
-        # Arguments
-            **kwargs: Additional keyword arguments
-                to be passed to `json.dumps()`.
-
-        # Returns
-            A JSON string containing the tokenizer configuration.
-        """
-        config = self.get_config()
-        config['maxlen'] = self.maxlen
-
-        tokenizer_config = {
-            'class_name': self.__class__.__name__,
-            'config': config
-        }
-        return json.dumps(tokenizer_config, **kwargs)
-
-    def save(self):
-        """
-
-        :return:
-        """
-        tokenizer_json = self.to_json()
-
-        path = os.path.join(DirConf.MODELS_DIR, self.name)
-
-        with io.open(path, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(tokenizer_json, ensure_ascii=True))
 
     @staticmethod
     def tokenizer_from_json(json_string):
