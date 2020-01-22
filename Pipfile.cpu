@@ -4,7 +4,6 @@ name = "pypi"
 url = "https://pypi.python.org/simple"
 
 [packages]
-"fabric3" = "*"
 tqdm = "*"
 scikit-learn = "*"
 # > 1.16.0 causes scikit-image < 0.14.2 import failure
@@ -16,17 +15,12 @@ ipython = "*"
 pandas = "==0.24.2"
 jupyter = "*"
 matplotlib = "*"
-pytest = "*"
 ipdb = "*"
 tensorflow = "*"
 pyyaml = "*"
-pytest-env = "*"
-"pytest-pep8" = "*"
-pytest-cov = "*"
-pytest-mock = "*"
-pycodestyle = "*"
 editdistance = "*"
 alphabet-detector = "*"
+pipfile = "*"
 
 [requires]
 python_version = "3.7"
