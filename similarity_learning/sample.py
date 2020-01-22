@@ -681,12 +681,11 @@ class SamplerV2(Sequence):
 if __name__ == "__main__":
     from similarity_learning.dataset import Dataset
 
-    dataset = Dataset()
-    dataset.load_data()
-    dataset.split_data()
+    # TODO: clean this up
+    dataset = Dataset(train_fname='', val_fname='')
     dataset.tokenize_data()
 
-    params = {'data': dataset.train,
+    params = {'data': dataset.train_data_,
               'n_negatives': 3,
               'neg_samples_size': 30,
               'batch_size': 16,
