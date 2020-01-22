@@ -1,20 +1,21 @@
 dataset:
-  name: 'unbiased_preshuffled_dataset-string-similarity-global-train-original.csv'
+  train_fname: 'n_alternates_1+_latin_stratified_split_x_train.csv'
+  val_fname: 'n_alternates_1+_latin_stratified_split_x_val.csv'
   max_chars: 32
-  n_rows: -1
-  val_size: 0.25
 tokenizer:
-  name: ngram_tokenizer
-  maxlen: 30
+  #  someone can use unigram_tokenizer as well
+  name: trigram_tokenizer
+  maxlen: 32
+  # remove num_words if you want to use all the generated tokens
   num_words: 50000
 train_sampler:
-  name: samplerv2
+  name: sampler_v2
   batch_size: 16
   n_negatives: 3
   neg_samples_size: 30
   shuffle: true
 val_sampler:
-  name: samplerv2
+  name: sampler_v2
   batch_size: 16
   n_negatives: 3
   neg_samples_size: 30
