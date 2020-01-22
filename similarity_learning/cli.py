@@ -1,6 +1,7 @@
 """Command line interface for operation management"""
 import argparse
 import os
+from typing import NoReturn
 
 import yaml
 
@@ -11,7 +12,7 @@ from similarity_learning.scripts.handle_raw_dataset import RawDataPreprocessor
 class LGMInterface:
     """Command Line Interface for the LGM-Interlinking"""
 
-    def __init__(self) -> None:
+    def __init__(self) -> NoReturn:
         """
         The ComLInt is the main CLI of the Similarity Approach.
         It is responsible for handling different groups of actions with diff
@@ -32,7 +33,7 @@ class LGMInterface:
             'dataset',
             help='triggers the raw data preprocessing')
 
-    def run(self) -> None:
+    def run(self) -> NoReturn:
         """
         This method instantiates all previous methods in order to parse all
         the arguments for all the actions in the CLI.
@@ -44,6 +45,7 @@ class LGMInterface:
         None
         """
 
+        # Experiment related arguments
         self.train_parser.add_argument(
             '--exp_name', type=str, help='experiment name. Eg. LGM_SiameseNet')
 
@@ -51,6 +53,7 @@ class LGMInterface:
             '--settings', type=str, default='similarity2.yml',
             help='path for YAML configuration file containing default params')
 
+        # Raw Dataset Split Related Arguments
         self.dataset_parser.add_argument(
             '--dataset_name', type=str, default='allCountries.txt',
             help='dataset name')
