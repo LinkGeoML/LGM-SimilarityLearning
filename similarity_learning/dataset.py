@@ -248,7 +248,6 @@ class Dataset:
 
         train_params = {'data': self.train_data,
                         'name': 'sampler',
-                        'n_positives': 1,
                         'n_negatives': 3,
                         'neg_samples_size': 30,
                         'batch_size': 2048,
@@ -256,7 +255,6 @@ class Dataset:
 
         val_params = {'data': self.val_data,
                       'name': 'sampler',
-                      'n_positives': 1,
                       'n_negatives': 3,
                       'neg_samples_size': 30,
                       'batch_size': 2048,
