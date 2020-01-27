@@ -1,16 +1,18 @@
 import random
-from typing import List, Tuple, NoReturn, Optional
+from typing import List, Tuple, NoReturn, Optional, Union
 
 import editdistance
 import numpy as np
 import pandas as pd
 from tensorflow.keras.utils import Sequence
 
-from similarity_learning.tokenize import NgramTokenizer
+from similarity_learning.tokenize import TrigramTokenizer, UnigramTokenizer
 
 pd.set_option('display.expand_frame_repr', False)
 
 random.seed(5)
+
+tokenizers = Optional[Union[UnigramTokenizer, TrigramTokenizer]]
 
 
 class SimpleSampler(Sequence):
@@ -20,7 +22,7 @@ class SimpleSampler(Sequence):
 
     def __init__(
             self, toponyms: pd.Series, variations: pd.Series, batch_size=128,
-            tokenizer: Optional[NgramTokenizer] = None, n_positives: int = 1,
+            tokenizer: tokenizers = None, n_positives: int = 1,
             n_negatives: int = 3, neg_samples_size: int = 30,
             shuffle: bool = True) -> NoReturn:
         """
@@ -189,7 +191,7 @@ class SimpleSamplerV2(SimpleSampler):
 
     def __init__(
             self, toponyms: pd.Series, variations: pd.Series, batch_size=128,
-            tokenizer: Optional[NgramTokenizer] = None, n_positives: int = 1,
+            tokenizer: tokenizers = None, n_positives: int = 1,
             n_negatives: int = 3, neg_samples_size: int = 30,
             shuffle: bool = True) -> NoReturn:
         """
@@ -243,7 +245,7 @@ class Sampler(Sequence):
     def __init__(
             self, data, batch_size=128, n_negatives: int = 3,
             neg_samples_size: int = 30, n_positives: int = 1,
-            tokenizer: Optional[NgramTokenizer] = None,
+            tokenizer: tokenizers = None,
             shuffle: bool = True) -> NoReturn:
         """
 
@@ -435,7 +437,7 @@ class Sampler(Sequence):
 class SamplerV2(Sequence):
     def __init__(self, data, batch_size=32, n_negatives: int = 3,
                  neg_samples_size: int = 30, shuffle: bool = True,
-                 tokenizer: Optional[NgramTokenizer] = None) -> NoReturn:
+                 tokenizer: tokenizers = None) -> NoReturn:
         """
 
         Parameters
