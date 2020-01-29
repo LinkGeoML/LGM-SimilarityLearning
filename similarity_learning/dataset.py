@@ -2,12 +2,12 @@ import os
 from typing import Optional
 
 import pandas as pd
-from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm import tqdm
 
 import similarity_learning.tokenize as tokenizers
 from similarity_learning import sample as samplers
 from similarity_learning.config import DirConf
+from similarity_learning.logger import exp_logger as logger
 from similarity_learning.utils import underscore_to_camel
 
 pd.set_option('display.expand_frame_repr', False)
@@ -17,12 +17,11 @@ tqdm.pandas()
 class Dataset:
 
     def __init__(self,
-                 name: str = 'all_countries_filtered_rows_&_columns.csv',
+                 train_fname: str,
+                 val_fname: str,
                  verbose: int = 0,
                  max_chars: int = 32,
-                 n_rows: int = 10_000,
                  save_tokenizer: bool = True,
-                 val_size: float = 0.25,
                  tokenizer_params: Optional[dict] = None,
                  train_sampler_params: Optional[dict] = None,
                  val_sampler_params: Optional[dict] = None):
@@ -30,35 +29,30 @@ class Dataset:
 
         Parameters
         ----------
-        name
+        train_fname
+        val_fname
         verbose
         max_chars
-        n_rows
         save_tokenizer
-        val_size
         tokenizer_params
+        train_sampler_params
+        val_sampler_params
         """
-        self.path = os.path.join(DirConf.DATA_DIR, name)
-        assert os.path.exists(self.path)
-        assert isinstance(n_rows, int)
-        assert n_rows > -2
+        self.train_path = os.path.join(DirConf.DATA_DIR, train_fname)
+        self.val_path = os.path.join(DirConf.DATA_DIR, val_fname)
 
-        if n_rows == -1:
-            n_rows = None
+        assert os.path.exists(self.train_path)
+        assert os.path.exists(self.val_path)
 
         self.verbose = verbose
         self.max_chars = max_chars
 
-        self.n_rows = n_rows
         self.save_tokenizer = save_tokenizer
 
-        self.data: Optional[pd.DataFrame] = None
         self.cols = ['name', 'alternate_names']
-        self.val_size = val_size
 
-        self.train = None
-        self.val = None
-        self.test = None
+        self.train_data_: Optional[pd.DataFrame] = None
+        self.val_data_: Optional[pd.DataFrame] = None
 
         self.tokenizer_params = {'name': 'ngram_tokenizer', 'maxlen': 30,
                                  'filters': '', 'lower': True, 'split': ' ',
@@ -68,6 +62,7 @@ class Dataset:
         if tokenizer_params:
             self.tokenizer_params.update(tokenizer_params)
 
+        logger.info('Loading tokenizer')
         TokenizerCLass = getattr(tokenizers,
                                  underscore_to_camel(
                                      self.tokenizer_params.pop('name')))
@@ -81,75 +76,66 @@ class Dataset:
 
         self.model = None
 
-    def load_data(self):
+    @property
+    def train_data(self) -> pd.DataFrame:
         """
 
         Returns
         -------
 
         """
-        if self.data is None:
-            self.data = pd.read_csv(self.path, nrows=self.n_rows,
-                                    usecols=self.cols)
+        if self.train_data_ is None:
+            logger.info('Loading training dataset')
+            self.train_data_ = pd.read_csv(self.train_path, usecols=self.cols)
 
-            self.data.dropna(inplace=True)
-            self.data['name'] = self.data['name'].str.lower()
+            self.train_data_.dropna(inplace=True)
+            self.train_data_['name'] = self.train_data_['name'].str.lower()
 
-            self.data['alternate_names'] = self.data[
+            self.train_data_['alternate_names'] = self.train_data_[
                 'alternate_names'].str.lower()
 
-            self.data['n_alternate_names'] = self.data[
+            self.train_data_['n_alternate_names'] = self.train_data_[
                 'alternate_names'].str.split(',').apply(len)
 
-            self.data['len_name'] = self.data['name'].str.len()
+            self.train_data_['len_name'] = self.train_data_['name'].str.len()
 
             # get rid of toponyms that have more than "max_chars" characters.
-            self.data = self.data[
-                (self.data['len_name'] <= self.max_chars)
-                & (self.data['len_name'] > 2)].reset_index(drop=True)
+            self.train_data_ = self.train_data_[
+                (self.train_data_['len_name'] <= self.max_chars)
+                & (self.train_data_['len_name'] > 2)].reset_index(drop=True)
 
-        return self.data
+        return self.train_data_
 
-    def split_data(self):
+    @property
+    def val_data(self) -> pd.DataFrame:
         """
-        Splits the data into training and validation and test.
+
         Returns
         -------
 
         """
-        if not self.data.empty:
+        if self.val_data_ is None:
+            logger.info('Loading validation dataset')
 
-            self.data['first_char'] = self.data['name'].str[0]
+            self.val_data_ = pd.read_csv(self.val_path, usecols=self.cols)
 
-            test_index = len(self.data) // 2
+            self.val_data_.dropna(inplace=True)
+            self.val_data_['name'] = self.val_data_['name'].str.lower()
 
-            train_val = self.data[:test_index]
-            test = self.data[test_index:]
+            self.val_data_['alternate_names'] = self.val_data_[
+                'alternate_names'].str.lower()
 
-            sss = StratifiedShuffleSplit(n_splits=1, test_size=self.val_size,
-                                         random_state=0)
+            self.val_data_['n_alternate_names'] = self.val_data_[
+                'alternate_names'].str.split(',').apply(len)
 
-            train, val, y_train, y_val = None, None, None, None
+            self.val_data_['len_name'] = self.val_data_['name'].str.len()
 
-            cols_to_be_used = self.cols + ['len_name']
+            # get rid of toponyms that have more than "max_chars" characters.
+            self.val_data_ = self.val_data_[
+                (self.val_data_['len_name'] <= self.max_chars)
+                & (self.val_data_['len_name'] > 2)].reset_index(drop=True)
 
-            X = train_val[cols_to_be_used].copy()
-            y = train_val[['len_name']]  # 'first_char'
-
-            # split the data based on the number of characters of the toponym
-            # and their initial character
-            for train_index, val_index in sss.split(X, y):
-                train, val = X.loc[train_index], X.loc[val_index]
-                # don't really need the y's
-                # y_train, y_val = y.loc[train_index], y.loc[val_index]
-
-            train.reset_index(drop=True, inplace=True)
-            val.reset_index(drop=True, inplace=True)
-            test = test[cols_to_be_used].reset_index(drop=True)
-
-            self.train = train
-            self.val = val
-            self.test = test
+        return self.val_data_
 
     def tokenize_data(self):
         """
@@ -159,77 +145,93 @@ class Dataset:
         -------
 
         """
+
+        logger.info('Creating N-grams for training toponyms')
         # convert each toponym to it's ngram representation
-        self.train['toponym_ngrams'] = self.train['name'].progress_apply(
-            self.tokenizer.get_ngrams)
+        self.train_data['toponym_ngrams'] = self.train_data[
+            'name'].progress_apply(self.tokenizer.get_ngrams)
 
         # convert each variation of each toponym to it's n-gram representation
-        self.train['alternate_names'] = self.train[
+        self.train_data['alternate_names'] = self.train_data[
             'alternate_names'].str.split(',')
 
-        self.train['variations_ngrams'] = self.train[
+        logger.info('Creating N-grams for training alternate-names')
+        self.train_data['variations_ngrams'] = self.train_data[
             'alternate_names'].progress_apply(self.tokenizer.texts_to_ngrams)
 
         # collect (flatten out) all the n-grams (toponyms and variations)
         # these are needed in order to fit it to the tokenizer.
         all_train_names = list()
-        for row in self.train['variations_ngrams']:
+        for row in self.train_data['variations_ngrams']:
             all_train_names.extend(row)
 
-        all_train_names += list(self.train['toponym_ngrams'])
+        all_train_names += list(self.train_data['toponym_ngrams'])
 
         # fitting all the training texts on the instantiated tokenizer
         # this will create all the necessary tools that we will need.
+        logger.info('Fitting tokenizer to training-data')
         self.tokenizer.fit_on_texts(texts=all_train_names)
 
         # using the fitted tokenizer, convert the train toponyms to sequences
-        self.train['toponym_seqs'] = self.train[
+        logger.info('Converting training toponyms to sequences')
+        self.train_data['toponym_seqs'] = self.train_data[
             'toponym_ngrams'].progress_apply(
             lambda x: self.tokenizer.texts_to_sequences(texts=[x])[0])
 
+        logger.info('Padding training toponym sequences')
         # pad the sequences to the max length
-        self.train['toponym_seqs'] = self.train[
+        self.train_data['toponym_seqs'] = self.train_data[
             'toponym_seqs'].progress_apply(self.tokenizer.pad_single)
 
         # using the fitted tokenizer, convert each of the variations of all the
         # toponyms sequences
-        self.train['variations_seqs'] = self.train[
+        logger.info('Converting training alternate-names to sequences')
+        self.train_data['variations_seqs'] = self.train_data[
             'variations_ngrams'].progress_apply(
             self.tokenizer.texts_to_sequences)
 
-        self.train['variations_seqs'] = self.train[
+        logger.info('Padding training alternate-names sequences')
+        self.train_data['variations_seqs'] = self.train_data[
             'variations_seqs'].progress_apply(self.tokenizer.pad)
 
         #  ========== Same Procedure for the Validation Set ===================
-        self.val['toponym_ngrams'] = self.val['name'].progress_apply(
+        logger.info('Creating N-grams for validation toponyms')
+
+        self.val_data['toponym_ngrams'] = self.val_data['name'].progress_apply(
             self.tokenizer.get_ngrams)
 
-        self.val['alternate_names'] = self.val[
+        self.val_data['alternate_names'] = self.val_data[
             'alternate_names'].str.split(',')
 
-        self.val['variations_ngrams'] = self.val[
+        logger.info('Creating N-grams for validation alternate-names')
+        self.val_data['variations_ngrams'] = self.val_data[
             'alternate_names'].progress_apply(self.tokenizer.texts_to_ngrams)
 
-        self.val['toponym_seqs'] = self.val['toponym_ngrams'].progress_apply(
+        logger.info('Converting validation toponyms to sequences')
+
+        self.val_data['toponym_seqs'] = self.val_data[
+            'toponym_ngrams'].progress_apply(
             lambda x: self.tokenizer.texts_to_sequences(texts=[x])[0])
 
-        self.val['toponym_seqs'] = self.val['toponym_seqs'].progress_apply(
+        logger.info('Padding validation toponym sequences')
+        self.val_data['toponym_seqs'] = self.val_data[
+            'toponym_seqs'].progress_apply(
             self.tokenizer.pad_single)
 
-        self.val['variations_seqs'] = self.val[
+        logger.info('Converting validation alternate-names to sequences')
+        self.val_data['variations_seqs'] = self.val_data[
             'variations_ngrams'].progress_apply(
             self.tokenizer.texts_to_sequences)
 
-        self.val['variations_seqs'] = self.val[
+        logger.info('Padding validation alternate-names sequences')
+        self.val_data['variations_seqs'] = self.val_data[
             'variations_seqs'].progress_apply(self.tokenizer.pad)
 
         if self.verbose > 0:
-            print(f'N-gram index length: {len(self.tokenizer.word_index)}',
-                  end='\n\n')
-            print('Example Transformation')
-            print(self.train.loc[0])
-
-            print(self.train.loc[0]['variations_seqs'])
+            print(f'N-gram index length: {len(self.tokenizer.word_index)}')
+            print('\nExample Transformation')
+            print(self.val_data.loc[0])
+            print(self.val_data.loc[0]['variations_seqs'])
 
         if self.save_tokenizer:
             print('Saving Tokenizer')
@@ -244,17 +246,15 @@ class Dataset:
 
         """
 
-        train_params = {'data': self.train,
+        train_params = {'data': self.train_data,
                         'name': 'sampler',
-                        'n_positives': 1,
                         'n_negatives': 3,
                         'neg_samples_size': 30,
                         'batch_size': 2048,
                         'shuffle': True}
 
-        val_params = {'data': self.val,
+        val_params = {'data': self.val_data,
                       'name': 'sampler',
-                      'n_positives': 1,
                       'n_negatives': 3,
                       'neg_samples_size': 30,
                       'batch_size': 2048,
@@ -285,16 +285,15 @@ class Dataset:
         -------
 
         """
-        self.load_data()
-        self.split_data()
+        # the datasets are implicitly loaded
         self.tokenize_data()
         self.create_samplers()
 
 
 if __name__ == "__main__":
     trainer = Dataset(
-        name='unbiased_preshuffled_dataset-string-similarity-global-train-original.csv',
+        train_fname='n_alternates_1+_latin_stratified_split_x_train.csv',
+        val_fname='n_alternates_1+_latin_stratified_split_x_val.csv',
         save_tokenizer=True,
-        n_rows=10000,
-        verbose=0)
+        verbose=1)
     trainer.run_data_preparation()

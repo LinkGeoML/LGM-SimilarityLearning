@@ -14,6 +14,7 @@ One can use the CLI to preprocess the original dataset or train a model based
 on some settings.
 
 In order to check the CLI command run the following:
+
 ```python -m similarity_learning.cli --help```
 
 
@@ -24,3 +25,8 @@ To preprocess the original dataset, one may run the following:
 
 - Run the default parameters
 ```python -m similarity_learning.cli dataset```
+
+To run an experiment you can use the following:
+
+- Check the config files in order to use one of the .yml files or create one of your own.
+- Run using the following: ```python -m similarity_learning.cli train --exp_name <some-exp-name> --settings <config-file>.yml ```

@@ -3,22 +3,17 @@ dataset:
   val_fname: 'n_alternates_1+_latin_stratified_split_x_val.csv'
   max_chars: 32
 tokenizer:
-  #  someone can use unigram_tokenizer as well
-  name: trigram_tokenizer
+  name: unigram_tokenizer
   maxlen: 32
-  # remove num_words if you want to use all the generated tokens
-  num_words: 50000
 train_sampler:
-  name: sampler
-  batch_size: 2048
-  n_positives: 1
+  name: sampler_v2
+  batch_size: 16
   n_negatives: 3
   neg_samples_size: 30
   shuffle: true
 val_sampler:
-  name: sampler
-  batch_size: 2048
-  n_positives: 1
+  name: sampler_v2
+  batch_size: 16
   n_negatives: 3
   neg_samples_size: 30
   shuffle: true
@@ -34,6 +29,6 @@ metrics:
   accuracy: 'primary'
   AUC: 'primary'
 training:
-  num_epochs: 50
+  num_epochs: 30
   num_workers: 8
   multi_process: false

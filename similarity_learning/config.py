@@ -4,8 +4,6 @@ Configuration Module
 import os
 from typing import Any
 
-from distutils.util import strtobool
-
 ENV_PREFIX = "LGM_"
 
 
@@ -28,13 +26,6 @@ def _env_get(name: str, default=None) -> Any:
     """
 
     return os.environ.get("{}{}".format(ENV_PREFIX, name), default)
-
-
-def parse_bool(value) -> bool:
-    if isinstance(value, bool):
-        return value
-
-    return bool(strtobool(value))
 
 
 class DirConf:

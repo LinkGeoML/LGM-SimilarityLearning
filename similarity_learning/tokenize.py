@@ -87,7 +87,7 @@ class CustomTokenizer(Tokenizer):
             f.write(json.dumps(tokenizer_json, ensure_ascii=True))
 
 
-class NgramTokenizer(CustomTokenizer):
+class TrigramTokenizer(CustomTokenizer):
     def __init__(self, maxlen=None, **kwargs):
         """
 
@@ -118,7 +118,7 @@ class NgramTokenizer(CustomTokenizer):
 
             chars = ['<BOS>'] + list(text) + ['<EOS>']
             text = ' '.join(
-                [''.join(t) for t in windowed(seq=chars, n=3, step=1)])
+                [''.join(t) for t in windowed(seq=chars, n=n, step=1)])
             output.append(text)
 
         # We have more than 1 tokens. So we need 3 kind of tags:
@@ -197,7 +197,119 @@ class NgramTokenizer(CustomTokenizer):
         index_word = {int(k): v for k, v in index_word.items()}
         word_index = json.loads(config.pop('word_index'))
 
-        tokenizer = NgramTokenizer(**config)
+        tokenizer = TrigramTokenizer(**config)
+        tokenizer.word_counts = word_counts
+        tokenizer.word_docs = word_docs
+        tokenizer.index_docs = index_docs
+        tokenizer.word_index = word_index
+        tokenizer.index_word = index_word
+
+        return tokenizer
+
+    def load(self):
+        """
+
+        :return:
+        """
+        path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        with open(path) as f:
+            json_string = json.load(f)
+            tokenizer = self.tokenizer_from_json(json_string)
+
+        return tokenizer
+
+
+class UnigramTokenizer(CustomTokenizer):
+    def __init__(self, maxlen=None, **kwargs):
+        """
+
+        :param maxlen:
+        :param kwargs:
+        """
+        super().__init__(**kwargs)
+
+        self.maxlen = maxlen
+        self.name = f'unigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+    @staticmethod
+    def get_ngrams(text: str) -> str:
+        """
+
+        :param text:
+        :param n:
+        :param step:
+        :return:
+        """
+        output = []
+
+        # split the sentence in tokens.
+        tokens = text.strip().split()
+
+        # if only one token, then we only have BOS and EOS tags
+        if len(tokens) == 1:
+
+            chars = ['<BOS>'] + list(text) + ['<EOS>']
+            output.append(' '.join(chars))
+
+        elif len(tokens) == 2:
+            chars = ['<BOS>'] + list(tokens[0]) + ['<IOS>'] + list(
+                tokens[1]) + ['<EOS>']
+
+            output.append(' '.join(chars))
+
+        # We have more than 1 tokens. So we need 3 kind of tags:
+        # BOS: beginning of sentence
+        # IOS: inside of sentence
+        # EOS: end of sentence
+        else:
+            # extracting the first token, a list of the inside tokens, and the
+            # last token. We handle each one differently
+            first, *inside, last = tokens
+
+            chars = ['<BOS>'] + list(first) + ['<IOS>']
+            for token in inside:
+                chars += list(token)
+                chars += ['<IOS>']
+            chars += list(last)
+            chars += ['<EOS>']
+
+            output.append(' '.join(chars))
+
+        return ' '.join(output)
+
+    def texts_to_ngrams(self, texts, n: int = 1, step=1) -> List[str]:
+        output = list()
+
+        for text in texts:
+            output.append(self.get_ngrams(text))
+
+        return output
+
+    @staticmethod
+    def tokenizer_from_json(json_string):
+        """
+        Parses a JSON tokenizer configuration file and returns a
+        tokenizer instance.
+
+        :param json_string: JSON string encoding a tokenizer configuration.
+        :return: A Keras Tokenizer instance
+        """
+
+        tokenizer_config = json.loads(json_string)
+
+        config = tokenizer_config.get('config')
+
+        word_counts = json.loads(config.pop('word_counts'))
+        word_docs = json.loads(config.pop('word_docs'))
+        index_docs = json.loads(config.pop('index_docs'))
+        # Integer indexing gets converted to strings with json.dumps()
+        index_docs = {int(k): v for k, v in index_docs.items()}
+        index_word = json.loads(config.pop('index_word'))
+        index_word = {int(k): v for k, v in index_word.items()}
+        word_index = json.loads(config.pop('word_index'))
+
+        tokenizer = TrigramTokenizer(**config)
         tokenizer.word_counts = word_counts
         tokenizer.word_docs = word_docs
         tokenizer.index_docs = index_docs
@@ -221,37 +333,45 @@ class NgramTokenizer(CustomTokenizer):
 
 
 if __name__ == "__main__":
+    from pprint import pprint
+
     toponyms = ['athens',
                 'athens greece',
                 'athens gr greece',
                 'athina',
                 'athina gr']
 
-    tokeniZer = NgramTokenizer(num_words=None,
-                               oov_token='<OOV>',
-                               lower=True,
-                               char_level=False,
-                               split=' ',
-                               maxlen=30,
-                               filters='!"#$%&()*+,-./:;=?@[\\]^_`{|}~\t\n', )
+    unigram_tokenizer = UnigramTokenizer(
+        num_words=None, oov_token='<OOV>', lower=True, char_level=False,
+        split=' ', maxlen=30, filters='!"#$%&()*+,-./:;=?@[\\]^_`{|}~\t\n')
 
-    toponyms = tokeniZer.texts_to_ngrams(texts=toponyms)
-    print(toponyms)
-    tokeniZer.fit_on_texts(toponyms)
-    sequences = tokeniZer.texts_to_sequences(toponyms)
-    print(toponyms)
-    print(sequences)
+    unigrams = unigram_tokenizer.texts_to_ngrams(texts=toponyms)
 
-    from pprint import pprint
+    pprint(unigrams)
 
-    pprint(tokeniZer.word_index)
-    # x = NgramTokenizer(maxlen=None).texts_to_ngrams(texts=toponyms)
-    # for i in zip(toponyms, x):
-    #     print(i)
-    tokeniZer.save()
+    unigram_tokenizer.fit_on_texts(unigrams)
+    unigram_sequences = unigram_tokenizer.texts_to_sequences(unigrams)
 
-    tokeniZer = NgramTokenizer().load()
-    print(tokeniZer)
-    print(tokeniZer.maxlen)
-    print(tokeniZer.num_words)
-    print(tokeniZer.word_counts)
+    print(unigram_sequences)
+    print(unigram_tokenizer.index_word)
+
+    trigram_params = dict(num_words=None, oov_token='<OOV>', lower=True,
+                          char_level=False, split=' ', maxlen=30,
+                          filters='!"#$%&()*+,-./:;=?@[\\]^_`{|}~\t\n')
+    trigram_tokenizer = TrigramTokenizer(**trigram_params)
+
+    toponyms_3grams = trigram_tokenizer.texts_to_ngrams(texts=toponyms)
+
+    pprint(toponyms_3grams)
+    trigram_tokenizer.fit_on_texts(toponyms_3grams)
+    trigram_sequences = trigram_tokenizer.texts_to_sequences(toponyms_3grams)
+    print(trigram_tokenizer.index_word)
+    print(trigram_sequences)
+
+    trigram_tokenizer.save()
+
+    trigram_tokenizer = TrigramTokenizer(**trigram_params).load()
+    print(trigram_tokenizer)
+    print(trigram_tokenizer.maxlen)
+    print(trigram_tokenizer.num_words)
+    print(trigram_tokenizer.index_word)

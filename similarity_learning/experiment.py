@@ -16,13 +16,17 @@ from similarity_learning.logger import exp_logger
 from similarity_learning.utils import underscore_to_camel
 
 
-class ComponentsSetup:
+class Components:
     """Class that handles all the preparation steps and loads all the necessary
-     objects for the training procedure
-     """
+     objects for the training procedure."""
 
     def __init__(self, logger=None):
+        """
 
+        Parameters
+        ----------
+        logger
+        """
         self._logger = logger
 
     @property
@@ -81,7 +85,6 @@ class ComponentsSetup:
         ----------
         params: dict
             Parameters that we need in order to search for the criterion.
-
         Returns
         -------
 
@@ -115,7 +118,6 @@ class ComponentsSetup:
         Returns
         -------
             An instantiated optimizer
-
         """
         optimizer_name = underscore_to_camel(params.pop('name'))
 
@@ -136,7 +138,7 @@ class ComponentsSetup:
 
         metric_names example:
         {'accuracy': 'primary',
-         'distance_accuracy': 'primary',
+         'AUC': 'primary',
          'precision': 'secondary'}
 
         Parameters
@@ -159,15 +161,6 @@ class ComponentsSetup:
 
                 self.logger.info(f'Checking Keras Metrics for: {metric_name}')
                 metrics[metric_name] = metric_name
-                # try:
-                #     metrics[metric_name] = getattr(
-                #         tf_metrics, underscore_to_camel(metric_name))()
-                #     self.logger.info(f'Using keras metric: {metric_name}')
-                #
-                # except AttributeError:
-                #     self.logger.warning(
-                #         f'Metric not found in keras metrics: {metric_name}')
-                #     metrics[metric_name] = None
 
         return metrics
 
@@ -198,7 +191,7 @@ class Experiment:
         # Lazily loads the logger
         self.logger.info('Model name: {}'.format(self.name))
 
-        self.components = ComponentsSetup(logger=self.logger)
+        self.components = Components(logger=self.logger)
 
         # Prepare Trainer to be ready for running!
         self.trainer = self.prepare()
@@ -222,36 +215,42 @@ class Experiment:
         return self._logger
 
     @property
-    def hyperparams(self) -> dict:
+    def hyperparams(self) -> Dict[str, dict]:
         """
-
+        Property that provides all the hyper parameters of the experiment.
         Returns
         -------
-
+        Dict[str, dict]
+            The components names and the corresponding params
         """
 
-        out = dict(dataset=dict(**self.dataset_params),
-                   model=dict(**self.model_params),
-                   criterion=dict(**self.criterion_params),
-                   optimizer=dict(**self.optimizer_params),
-                   training=dict(**self.training_params),
-                   metrics=self.metrics_params)
-
-        return out
+        return dict(
+            dataset=dict(**self.dataset_params),
+            model=dict(**self.model_params),
+            criterion=dict(**self.criterion_params),
+            optimizer=dict(**self.optimizer_params),
+            training=dict(**self.training_params),
+            metrics=self.metrics_params)
 
     def build_name(self) -> str:
         """
         This method creates the models name based on the date of the experiment
         Returns
         -------
-
+        str
         """
         name = '{}-{}'.format(
             datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
 
         return name
 
-    def prepare(self):
+    def prepare(self) -> dict:
+        """
+
+        Returns
+        -------
+
+        """
         self.logger.info('Preparing the datasets')
 
         dataset_params = self.dataset_params
@@ -328,56 +327,46 @@ class Experiment:
 
 
 if __name__ == "__main__":
-    parameters = {
-        "dataset": {
-            "name": "unbiased_preshuffled_dataset-string-similarity-global-train-original.csv",
-            "max_chars": 32,
-            "n_rows": -1,
-            "val_size": 0.25
-        },
-        "tokenizer": {
-            "name": "ngram_tokenizer",
-            "maxlen": 30,
-            "num_words": 50000
-        },
-        "train_sampler": {
-            "name": "sampler",
-            "batch_size": 2048,
-            "n_positives": 1,
-            "n_negatives": 3,
-            "neg_samples_size": 30,
-            "shuffle": True
-        },
-        "val_sampler": {
-            "name": "sampler",
-            "batch_size": 2048,
-            "n_positives": 1,
-            "n_negatives": 3,
-            "neg_samples_size": 30,
-            "shuffle": True
-        },
-        "model": {
-            "name": "siamese_net",
-            "encoder": "lstm2"
-        },
-        "criterion": {
-            "name": "binary_crossentropy"
-        },
-        "optimizer": {
-            "name": "adam",
-            "lr": 0.001
-        },
-        "metrics": {
-            # "distance_accuracy": "primary",
-            "accuracy": "primary",
-            "AUC": 'primary'
-        },
-        "training": {
-            "num_epochs": 30,
-            "num_workers": 1,
-            "multi_process": False
-        }
-    }
+    parameters = dict(
+        dataset=dict(
+            train_fname="n_alternates_1+_latin_stratified_split_x_train.csv",
+            val_fname="n_alternates_1+_latin_stratified_split_x_val.csv",
+            max_chars=32),
+        tokenizer=dict(
+            name="ngram_tokenizer",
+            maxlen=30,
+            num_words=50000),
+        train_sampler=dict(
+            name="sampler",
+            batch_size=2048,
+            n_positives=1,
+            n_negatives=3,
+            neg_samples_size=30,
+            shuffle=True),
+        val_sampler=dict(
+            name="sampler",
+            batch_size=2048,
+            n_positives=1,
+            n_negatives=3,
+            neg_samples_size=30,
+            shuffle=True),
+        model=dict(
+            name="siamese_net",
+            encoder="lstm2"),
+        criterion=dict(
+            name="binary_crossentropy"),
+        optimizer=dict(
+            name="adam",
+            lr=0.001),
+        metrics=dict(
+            accuracy="primary",
+            AUC='primary'),
+        training=dict(
+            num_epochs=50,
+            num_workers=1,
+            multi_process=False
+        )
+    )
 
     experiment = Experiment(**parameters)
 
