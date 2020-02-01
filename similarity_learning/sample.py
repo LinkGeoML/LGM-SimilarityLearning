@@ -680,6 +680,74 @@ class SamplerV2(Sequence):
             np.random.shuffle(self.indexes)
 
 
+class EvaluationSampler(Sequence):
+    """
+    This is a simple Sampler that works only for the evaluation process.
+    This sampler yields all the positives and chooses the same amount of
+    negatives totally in random.
+    """
+
+    def __init__(self,
+                 data,
+                 batch_size: int = 1024,
+                 shuffle: bool = True) -> NoReturn:
+        """
+
+        Parameters
+        ----------
+        data
+        batch_size
+        shuffle
+        """
+        self.data = data
+        self.batch_size = batch_size
+        self.indexes: Optional[np.ndarray] = None
+        self.shuffle = shuffle
+        self.on_epoch_end()
+
+    def __len__(self) -> int:
+        """
+        Denotes the number of batches per epoch
+        Returns
+        -------
+        int
+        """
+
+        n_batches = int(np.floor(len(self.data) / self.batch_size))
+
+        return n_batches
+
+    def __getitem__(self, index) -> Tuple[Tuple[np.ndarray,
+                                                np.ndarray],
+                                          np.ndarray]:
+        """
+        Generates one batch of data
+        :return:
+        """
+        # np.array(left), np.array(right), np.array(targets)
+        # Generate indexes of the batch
+        indexes = self.indexes[
+                  index * self.batch_size: (index + 1) * self.batch_size]
+
+        names = np.vstack(self.data['name_seq'].loc[indexes])
+
+        alt_names = np.vstack(self.data['alternate_name_seq'].loc[indexes])
+
+        targets = self.data['target'].loc[indexes].values
+
+        return (names, alt_names), targets
+
+    def on_epoch_end(self):
+        """
+        Updates indexes after each epoch
+        :return:
+        """
+        self.indexes = np.arange(len(self.data))
+        if self.shuffle:
+            # shuffles without assignment
+            np.random.shuffle(self.indexes)
+
+
 if __name__ == "__main__":
     from similarity_learning.dataset import Dataset
 
