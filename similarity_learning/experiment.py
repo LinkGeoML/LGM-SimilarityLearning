@@ -186,15 +186,27 @@ class Experiment:
 
         self._logger = None
         # Obtain a name for the current experiment
-        self.name = kwargs.get('name') or self.build_name()
+        self.exp_name = kwargs.get('exp_name') or self.build_name()
 
         # Lazily loads the logger
-        self.logger.info('Model name: {}'.format(self.name))
+        self.logger.info('Experiment name: {}'.format(self.exp_name))
 
         self.components = Components(logger=self.logger)
 
         # Prepare Trainer to be ready for running!
         self.trainer = self.prepare()
+
+    def build_name(self) -> str:
+        """
+        This method creates the models name based on the date of the experiment
+        Returns
+        -------
+        str
+        """
+        name = '{}-{}'.format(
+            datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
+
+        return name
 
     @property
     def logger(self):
@@ -231,18 +243,6 @@ class Experiment:
             optimizer=dict(**self.optimizer_params),
             training=dict(**self.training_params),
             metrics=self.metrics_params)
-
-    def build_name(self) -> str:
-        """
-        This method creates the models name based on the date of the experiment
-        Returns
-        -------
-        str
-        """
-        name = '{}-{}'.format(
-            datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
-
-        return name
 
     def prepare(self) -> dict:
         """
