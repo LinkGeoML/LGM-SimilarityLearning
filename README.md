@@ -30,3 +30,12 @@ To run an experiment you can use the following:
 
 - Check the config files in order to use one of the .yml files or create one of your own.
 - Run using the following: ```python -m similarity_learning.cli train --exp_name <some-exp-name> --settings <config-file>.yml ```
+
+
+To evaluate an experiment you can use the following:
+
+- Check the config files (in the test section) in order to use one of the .yml files or create one of your own.
+- Run using the following: ```python -m similarity_learning.cli evaluate --settings <config-file>.yml ```
+
+For example:
+```python -m similarity_learning.cli evaluate --settings test_similarity.yml```
