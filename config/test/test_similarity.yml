@@ -1,0 +1,19 @@
+dataset:
+  fname: 'n_alternates_1+_latin_stratified_split_x_test.csv'
+  tokenizer_fname: 'unigram_tokenizer_nw_164_ml_32.json'
+  use_external: false
+model:
+  name: 'siamese_net_v2'
+  encoder: 'lstm1'
+  weights: 'siamese_net_v2.h5'
+criterion:
+  name: 'binary_crossentropy'
+optimizer:
+  name: 'adam'
+  lr: 0.001
+test_sampler:
+  batch_size: 1024
+  shuffle: true
+metrics:
+  accuracy: 'primary'
+  AUC: 'primary'

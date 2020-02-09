@@ -1,6 +1,4 @@
-import contextlib
 import re
-import time
 
 # --- GENERIC Utils ---
 FIRST_CAP_RE = re.compile('(.)([A-Z][a-z]+)')
@@ -42,10 +40,3 @@ def underscore_to_camel(name):
 
     """
     return ''.join(x.capitalize() or '_' for x in name.split('_'))
-
-
-@contextlib.contextmanager
-def timer(name):
-    t0 = time.time()
-    yield
-    print('[{}] done in {:.2f} s'.format(name, time.time() - t0))

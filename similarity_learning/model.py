@@ -1,6 +1,7 @@
 import os
-from typing import Optional
+from typing import Optional, NoReturn
 
+import numpy as np
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras import models
 from tensorflow.keras.layers import Input, Lambda, Embedding, Dense
@@ -14,8 +15,6 @@ from similarity_learning.distance import exponent_neg_manhattan_distance
 from similarity_learning.utils import camel_to_underscore
 
 
-# import pydot
-
 class BaseNetMeta(type):
     """Meta class for injecting class method properties to BaseNet class"""
 
@@ -28,7 +27,7 @@ class BaseNetMeta(type):
     def filename(self) -> str:
         """Returns the filename corresponding to the specific model class"""
 
-        return '{}.pth'.format(self.name)
+        return f'{self.name}.h5'
 
     @property
     def default_path(self) -> str:
@@ -65,22 +64,24 @@ class BaseNet(metaclass=BaseNetMeta):
 
         return self.__class__.default_path
 
-    def load_weights(self, path: str = None):
+    def load_weights(self, path: str = None) -> NoReturn:
         """
 
         Parameters
         ----------
-        path
+        path : str
+            Use as specific path for loading pre-trained weights
 
         Returns
         -------
-
+        NoReturn
         """
         weights_path = path if path else self.default_path
+        weights_path = str(weights_path)
 
         self._model.load_weights(filepath=weights_path, by_name=True)
 
-    def save_weights(self, path: str = None):
+    def save_weights(self, path: str = None) -> NoReturn:
         """
 
         Parameters
@@ -93,6 +94,32 @@ class BaseNet(metaclass=BaseNetMeta):
         """
         weights_path = path if path else self.default_path
         self._model.save_weights(filepath=weights_path, overwrite=True)
+
+    def save_model(self, file_path):
+        """
+        Save model architecture and weights
+        Parameters
+        ----------
+        file_path
+
+        Returns
+        -------
+
+        """
+        self._model.save(file_path)
+
+    def load_model(self, file_path):
+        """
+        Load model architecture and weights
+        Parameters
+        ----------
+        file_path
+
+        Returns
+        -------
+
+        """
+        self._model = models.load_model(file_path)
 
     def build(self, max_features: int, maxlen: int, emb_dim: int,
               n_hidden: int = 50):
@@ -111,7 +138,7 @@ class BaseNet(metaclass=BaseNetMeta):
         """
         raise NotImplementedError
 
-    def set_callbacks(self):
+    def set_callbacks(self) -> list:
         """
 
         Returns
@@ -143,6 +170,31 @@ class BaseNet(metaclass=BaseNetMeta):
         tb = TensorBoard(log_dir=logs_dir)
         return [es, rop, checkpoint, tb]
 
+    def plot_summary(self) -> NoReturn:
+        """
+
+        Returns
+        -------
+
+        """
+        print(self._model.summary())
+
+    def plot_model_architecture(self, fname: str) -> NoReturn:
+        """
+
+        Parameters
+        ----------
+        fname
+
+        Returns
+        -------
+
+        """
+        plot_model(self._model,
+                   to_file=fname,
+                   show_shapes=True,
+                   show_layer_names=True)
+
     def fit(self, train_gen, val_gen, e: int, multi_process: bool = False):
         """
 
@@ -171,46 +223,30 @@ class BaseNet(metaclass=BaseNetMeta):
 
         return history
 
-    def plot_summary(self):
-        """
-
-        Returns
-        -------
-
-        """
-        print(self._model.summary())
-
-    def plot_model_architecture(self, fname: str):
+    def evaluate(self, test_gen, y_true: np.ndarray, show_info: bool = True,
+                 multi_process: bool = False) -> np.ndarray:
         """
 
         Parameters
         ----------
-        fname
+        test_gen
+        y_true
+        show_info
+        multi_process
 
         Returns
         -------
 
         """
-        plot_model(self._model,
-                   to_file=fname,
-                   show_shapes=True,
-                   show_layer_names=True)
+        # make predictions on the testing toponym pairs, finding the index
+        # of the label with the corresponding largest predicted probability
+        predictions = self._model.evaluate(
+            test_gen,
+            verbose=1,
+            use_multiprocessing=multi_process,
+            workers=1)
 
-    def evaluate(self, test_X, test_Y):
-        return self._model.evaluate(test_X, test_Y)
-
-    def predict(self, X):
-        predictions = self._model.predict(X)
         return predictions
-
-    def summary(self):
-        self._model.summary()
-
-    def save_model(self, file_path):
-        self._model.save(file_path)
-
-    def load_model(self, file_path):
-        self._model = models.load_model(file_path)
 
 
 class SiameseNet(BaseNet):

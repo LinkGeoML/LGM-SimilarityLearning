@@ -186,15 +186,27 @@ class Experiment:
 
         self._logger = None
         # Obtain a name for the current experiment
-        self.name = kwargs.get('name') or self.build_name()
+        self.exp_name = kwargs.get('exp_name') or self.build_name()
 
         # Lazily loads the logger
-        self.logger.info('Model name: {}'.format(self.name))
+        self.logger.info('Experiment name: {}'.format(self.exp_name))
 
         self.components = Components(logger=self.logger)
 
         # Prepare Trainer to be ready for running!
         self.trainer = self.prepare()
+
+    def build_name(self) -> str:
+        """
+        This method creates the models name based on the date of the experiment
+        Returns
+        -------
+        str
+        """
+        name = '{}-{}'.format(
+            datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
+
+        return name
 
     @property
     def logger(self):
@@ -232,18 +244,6 @@ class Experiment:
             training=dict(**self.training_params),
             metrics=self.metrics_params)
 
-    def build_name(self) -> str:
-        """
-        This method creates the models name based on the date of the experiment
-        Returns
-        -------
-        str
-        """
-        name = '{}-{}'.format(
-            datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
-
-        return name
-
     def prepare(self) -> dict:
         """
 
@@ -254,6 +254,10 @@ class Experiment:
         self.logger.info('Preparing the datasets')
 
         dataset_params = self.dataset_params
+
+        if 'num_words' not in self.tokenizer_params:
+            self.tokenizer_params['num_words'] = None
+
         dataset_params['tokenizer_params'] = self.tokenizer_params
         dataset_params['train_sampler_params'] = self.train_sampler_params
         dataset_params['val_sampler_params'] = self.val_sampler_params
@@ -300,8 +304,8 @@ class Experiment:
 
         # the model is already instantiated.
         # we need to build the actual model
-        num_words = self.trainer['dataset'].tokenizer_params['num_words']
-        maxlen = self.trainer['dataset'].tokenizer_params['maxlen']
+        num_words = self.trainer['dataset'].tokenizer.num_words
+        maxlen = self.trainer['dataset'].tokenizer.maxlen
 
         model = self.trainer['model']
 

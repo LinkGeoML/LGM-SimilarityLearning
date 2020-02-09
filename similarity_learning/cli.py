@@ -5,6 +5,7 @@ from typing import NoReturn
 
 import yaml
 
+from similarity_learning.evaluate import ExperimentEvaluator
 from similarity_learning.experiment import Experiment
 from similarity_learning.scripts.handle_raw_dataset import RawDataPreprocessor
 
@@ -27,11 +28,15 @@ class LGMInterface:
         # create parser for "train" command
         self.train_parser = self.subparsers.add_parser(
             'train',
-            help='triggers the training operation of the selected model')
+            help='triggers the training pipeline of the selected model')
 
         self.dataset_parser = self.subparsers.add_parser(
             'dataset',
-            help='triggers the raw data preprocessing')
+            help='triggers the raw data pre-processing')
+
+        self.evaluation_parser = self.subparsers.add_parser(
+            'evaluate',
+            help='triggers the evaluation pipeline of the selected model')
 
     def run(self) -> NoReturn:
         """
@@ -71,22 +76,26 @@ class LGMInterface:
             help='Whether to use stratified shuffle splint when breaking in'
                  ' train-val-test sets')
 
+        self.evaluation_parser.add_argument(
+            '--settings', type=str, default='test_similarity.yml',
+            help='path for YAML configuration file containing default params')
+
         cmd_args = self.parser.parse_args()
 
         if cmd_args.action == 'train':
 
             if cmd_args.settings:
-                path = os.path.join('config', cmd_args.settings)
+                path = os.path.join('config', 'train', cmd_args.settings)
                 # Load default configurations from YAML file
                 with open(path, 'r') as f:
                     experiment_params = yaml.safe_load(f)
 
             # experiment name
-            experiment_params['name'] = cmd_args.exp_name
+            experiment_params['exp_name'] = cmd_args.exp_name
 
             if cmd_args.action == 'train':
                 exp = Experiment(**experiment_params)
-                exp.run()
+                # exp.run()
 
         elif cmd_args.action == 'dataset':
 
@@ -97,6 +106,17 @@ class LGMInterface:
 
             preprocessor = RawDataPreprocessor(**options)
             preprocessor.run()
+
+        elif cmd_args.action == 'evaluate':
+
+            if cmd_args.settings:
+                path = os.path.join('config', 'test', cmd_args.settings)
+                # Load default configurations from YAML file
+                with open(path, 'r') as f:
+                    test_params = yaml.safe_load(f)
+
+                evaluator = ExperimentEvaluator(**test_params)
+                evaluator.run()
 
 
 if __name__ == "__main__":

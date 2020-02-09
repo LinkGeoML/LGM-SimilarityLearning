@@ -1,10 +1,11 @@
 dataset:
-  train_fname: 'n_alternates_1+_latin_stratified_split_x_train.csv'
-  val_fname: 'n_alternates_1+_latin_stratified_split_x_val.csv'
+  train_fname: 'n_alternates_1+_latin_stratified_split_x_val.csv'
+  val_fname: 'n_alternates_1+_latin_stratified_split_x_test.csv'
   max_chars: 32
 tokenizer:
   name: unigram_tokenizer
   maxlen: 32
+  num_words: null
 train_sampler:
   name: sampler_v2
   batch_size: 16
@@ -18,7 +19,7 @@ val_sampler:
   neg_samples_size: 30
   shuffle: true
 model:
-  name: 'siamese_net'
+  name: 'siamese_net_v2'
   encoder: 'lstm1'
 criterion:
   name: 'binary_crossentropy'
@@ -29,6 +30,6 @@ metrics:
   accuracy: 'primary'
   AUC: 'primary'
 training:
-  num_epochs: 30
+  num_epochs: 3
   num_workers: 8
   multi_process: false
