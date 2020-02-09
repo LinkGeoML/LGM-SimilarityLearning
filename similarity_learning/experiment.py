@@ -254,6 +254,10 @@ class Experiment:
         self.logger.info('Preparing the datasets')
 
         dataset_params = self.dataset_params
+
+        if 'num_words' not in self.tokenizer_params:
+            self.tokenizer_params['num_words'] = None
+
         dataset_params['tokenizer_params'] = self.tokenizer_params
         dataset_params['train_sampler_params'] = self.train_sampler_params
         dataset_params['val_sampler_params'] = self.val_sampler_params
@@ -300,8 +304,8 @@ class Experiment:
 
         # the model is already instantiated.
         # we need to build the actual model
-        num_words = self.trainer['dataset'].tokenizer_params['num_words']
-        maxlen = self.trainer['dataset'].tokenizer_params['maxlen']
+        num_words = self.trainer['dataset'].tokenizer.num_words
+        maxlen = self.trainer['dataset'].tokenizer.maxlen
 
         model = self.trainer['model']
 
