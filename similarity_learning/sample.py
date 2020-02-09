@@ -1,5 +1,5 @@
 import random
-from typing import List, Tuple, NoReturn, Optional, Union
+from typing import List, Tuple, NoReturn, Optional, Union, Any
 
 import editdistance
 import numpy as np
@@ -690,7 +690,7 @@ class EvaluationSampler(Sequence):
     def __init__(self,
                  data,
                  batch_size: int = 1024,
-                 shuffle: bool = True) -> NoReturn:
+                 shuffle: bool = False) -> NoReturn:
         """
 
         Parameters
@@ -717,9 +717,7 @@ class EvaluationSampler(Sequence):
 
         return n_batches
 
-    def __getitem__(self, index) -> Tuple[Tuple[np.ndarray,
-                                                np.ndarray],
-                                          np.ndarray]:
+    def __getitem__(self, index) -> Tuple[Tuple[np.ndarray, np.ndarray], Any]:
         """
         Generates one batch of data
         :return:
@@ -734,8 +732,10 @@ class EvaluationSampler(Sequence):
         alt_names = np.vstack(self.data['alternate_name_seq'].loc[indexes])
 
         targets = self.data['target'].loc[indexes].values
-
+        #
         return (names, alt_names), targets
+
+        # return (names, alt_names),
 
     def on_epoch_end(self):
         """
