@@ -47,7 +47,7 @@ def tokenizer_from_json(json_string):
     return tokenizer
 
 
-def load_tokenizer(name):
+def load_tokenizer(name: str):
     """
 
     :return:
@@ -70,6 +70,7 @@ class CustomTokenizer(Tokenizer):
         """
         super().__init__(**kwargs)
         self.maxlen = maxlen
+
         self.name = f'tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
 
     def pad(self, seqs):
@@ -130,6 +131,9 @@ class CustomTokenizer(Tokenizer):
 
         :return:
         """
+        if self.num_words is None:
+            self.num_words = len(self.index_word)
+            self.name = f'tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
         tokenizer_json = self.to_json()
 
         path = os.path.join(DirConf.MODELS_DIR, self.name)
@@ -225,6 +229,22 @@ class TrigramTokenizer(CustomTokenizer):
 
         return output
 
+    def save(self):
+        """
+
+        :return:
+        """
+        if self.num_words is None:
+            self.num_words = len(self.index_word)
+            self.name = f'trigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+        tokenizer_json = self.to_json()
+
+        path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        with io.open(path, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(tokenizer_json, ensure_ascii=True))
+
 
 class UnigramTokenizer(CustomTokenizer):
     def __init__(self, maxlen=None, **kwargs):
@@ -291,6 +311,22 @@ class UnigramTokenizer(CustomTokenizer):
             output.append(self.get_ngrams(text))
 
         return output
+
+    def save(self):
+        """
+
+        :return:
+        """
+        if self.num_words is None:
+            self.num_words = len(self.index_word)
+            self.name = f'unigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+        tokenizer_json = self.to_json()
+
+        path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        with io.open(path, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(tokenizer_json, ensure_ascii=True))
 
 
 if __name__ == "__main__":
