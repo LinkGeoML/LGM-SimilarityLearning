@@ -17,6 +17,8 @@ tqdm.pandas()
 
 np.random.seed(2020)
 
+TEST_ROWS = None
+
 
 class Dataset:
 
@@ -88,7 +90,8 @@ class Dataset:
         """
         if self.train_data_ is None:
             logger.info('Loading training dataset')
-            self.train_data_ = pd.read_csv(self.train_path, usecols=self.cols)
+            self.train_data_ = pd.read_csv(self.train_path, usecols=self.cols,
+                                           nrows=TEST_ROWS)
 
             self.train_data_.dropna(inplace=True)
             self.train_data_['name'] = self.train_data_['name'].str.lower()
@@ -119,7 +122,8 @@ class Dataset:
         if self.val_data_ is None:
             logger.info('Loading validation dataset')
 
-            self.val_data_ = pd.read_csv(self.val_path, usecols=self.cols)
+            self.val_data_ = pd.read_csv(self.val_path, usecols=self.cols,
+                                         nrows=TEST_ROWS)
 
             self.val_data_.dropna(inplace=True)
             self.val_data_['name'] = self.val_data_['name'].str.lower()
@@ -364,9 +368,11 @@ class TestDataset:
 
             if self.use_external:
 
-                self.data_ = pd.read_csv(self.path, usecols=self.external_cols)
+                self.data_ = pd.read_csv(self.path, usecols=self.external_cols,
+                                         nrows=TEST_ROWS)
             else:
-                self.data_ = pd.read_csv(self.path, usecols=self.cols)
+                self.data_ = pd.read_csv(self.path, usecols=self.cols,
+                                         nrows=TEST_ROWS)
 
             self.data_.dropna(inplace=True)
 
@@ -462,10 +468,11 @@ class TestDataset:
             'variations_seqs'].progress_apply(self.tokenizer.pad)
 
         if self.verbose > 0:
-            print(f'N-gram index length: {len(self.tokenizer.word_index)}')
-            print('\nExample Transformation')
-            print(self.data.loc[0])
-            print(self.data.loc[0]['variations_seqs'])
+            logger.info(
+                f'N-gram index length: {len(self.tokenizer.word_index)}')
+            logger.info('\nExample Transformation')
+            logger.info(self.data.loc[0])
+            logger.info(self.data.loc[0]['variations_seqs'])
 
     @staticmethod
     def get_alternate_index(idx: int, max_idx: int) -> int:
@@ -577,7 +584,6 @@ class TestDataset:
 
 
 if __name__ == "__main__":
-    pass
     # trainer = Dataset(
     #     train_fname='n_alternates_1+_latin_stratified_split_x_train.csv',
     #     val_fname='n_alternates_1+_latin_stratified_split_x_val.csv',
