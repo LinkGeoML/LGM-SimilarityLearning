@@ -95,7 +95,7 @@ class LGMInterface:
 
             if cmd_args.action == 'train':
                 exp = Experiment(**experiment_params)
-                # exp.run()
+                exp.run()
 
         elif cmd_args.action == 'dataset':
 
