@@ -64,7 +64,7 @@ class RawDataPreprocessor:
             must add to 1. Default is [0.8, 0.1, 0.1]
         """
 
-        self.max_name_chars = 100 if max_name_chars is None else max_name_chars
+        self.max_name_chars = 50 if max_name_chars is None else max_name_chars
 
         if splits is None:
             splits = [0.8, 0.1, 0.1]
