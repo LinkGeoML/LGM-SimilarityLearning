@@ -26,6 +26,12 @@ To preprocess the original dataset, one may run the following:
 - Run the default parameters
 ```python -m similarity_learning.cli dataset```
 
+- Alternatively, in order to create all datasets for all the variations you may run
+the following: 
+```python -m similarity_learning.scripts.handle_raw_dataset```
+
+Note!!! that the aforementioned execution will take some time.
+
 To run an experiment you can use the following:
 
 - Check the config files in order to use one of the .yml files or create one of your own.
