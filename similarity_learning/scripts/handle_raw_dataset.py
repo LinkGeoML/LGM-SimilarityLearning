@@ -251,6 +251,13 @@ class RawDataPreprocessor:
         self.data['name_alphabet'] = self.data['name'].progress_apply(
             self.detect_alphabet)
 
+        exp_logger.info('Converting non frequent alphabets to "UND"')
+        alphabet_counts = self.data['name_alphabet'].value_counts()
+        non_frequent_alpha = {i: 'UND' for i in alphabet_counts[
+            alphabet_counts.values < 10].index}
+        self.data['name_alphabet'] = self.data['name_alphabet'].apply(
+            lambda x: non_frequent_alpha.get(x, x))
+
         exp_logger.info('Detecting Alphabet for all Alternate Names')
         # get the alphabet for each alternate name
         self.data['alternate_names_alphabet'] = self.data[
@@ -272,8 +279,8 @@ class RawDataPreprocessor:
         datasets = self.split_records()
 
         if self.save_data:
-
             exp_logger.info('Saving Datasets')
+
             for data_type, data in datasets.items():
                 exp_logger.info(f'Saving {data_type}')
 
