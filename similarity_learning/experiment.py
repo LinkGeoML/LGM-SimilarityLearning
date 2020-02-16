@@ -64,6 +64,9 @@ class Components:
         models_dir.mkdir(parents=True, exist_ok=True)
 
         encoder_name = params.pop('encoder')
+
+        exp_name = params.pop('exp_name')
+
         self.logger.info('Encoder name: {}'.format(encoder_name))
         encoder = getattr(encoders, encoder_name)
 
@@ -73,7 +76,7 @@ class Components:
         ModelClass = getattr(models, model_name)
 
         # Instantiate chosen model
-        model = ModelClass(encoder=encoder)
+        model = ModelClass(encoder=encoder, exp_name=exp_name)
 
         return model
 
@@ -186,7 +189,10 @@ class Experiment:
 
         self._logger = None
         # Obtain a name for the current experiment
-        self.exp_name = kwargs.get('exp_name') or self.build_name()
+        self.exp_name = kwargs.get('exp_name') or self.build_name
+
+        self.model_params['exp_name'] = self.exp_name
+        self.tokenizer_params['exp_name'] = self.exp_name
 
         # Lazily loads the logger
         self.logger.info('Experiment name: {}'.format(self.exp_name))
@@ -196,6 +202,7 @@ class Experiment:
         # Prepare Trainer to be ready for running!
         self.trainer = self.prepare()
 
+    @property
     def build_name(self) -> str:
         """
         This method creates the models name based on the date of the experiment
@@ -203,10 +210,7 @@ class Experiment:
         -------
         str
         """
-        name = '{}-{}'.format(
-            datetime.now().strftime('%Y-%m-%d'), self.model_params['name'])
-
-        return name
+        return f"{datetime.now().strftime('%Y-%m-%d')}"
 
     @property
     def logger(self):
