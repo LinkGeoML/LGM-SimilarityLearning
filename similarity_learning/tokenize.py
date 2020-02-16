@@ -2,13 +2,14 @@ import io
 import json
 import os
 import sys
-from typing import List
+from typing import List, Optional, NoReturn
 
 from more_itertools import windowed
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
 
 from similarity_learning.config import DirConf
+from similarity_learning.logger import exp_logger
 
 
 def tokenizer_from_json(json_string):
@@ -62,7 +63,7 @@ def load_tokenizer(name: str):
 
 
 class CustomTokenizer(Tokenizer):
-    def __init__(self, maxlen=None, **kwargs):
+    def __init__(self, maxlen=None, exp_name: Optional[str] = None, **kwargs):
         """
 
         :param maxlen:
@@ -70,8 +71,33 @@ class CustomTokenizer(Tokenizer):
         """
         super().__init__(**kwargs)
         self.maxlen = maxlen
-
+        self.exp_name = exp_name
         self.name = f'tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+    def build_outfile(self) -> str:
+        """
+
+        Returns
+        -------
+
+        """
+        outfile = []
+
+        if self.exp_name:
+            outfile.append(self.exp_name)
+
+        outfile.append('tokenizer')
+
+        if self.num_words is None:
+            self.num_words = len(self.index_word)
+
+        outfile.extend(['nw', str(self.num_words)])
+
+        outfile.extend(['ml', str(self.maxlen)])
+
+        self.name = '_'.join(outfile) + '.json'
+
+        return self.name
 
     def pad(self, seqs):
         """
@@ -126,32 +152,60 @@ class CustomTokenizer(Tokenizer):
         }
         return json.dumps(tokenizer_config, **kwargs)
 
-    def save(self):
+    def save(self) -> NoReturn:
         """
 
         :return:
         """
-        if self.num_words is None:
-            self.num_words = len(self.index_word)
-            self.name = f'tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+        self.name = self.build_outfile()
+
         tokenizer_json = self.to_json()
 
         path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        exp_logger.info(f'Storing Tokenizer at: {path}')
 
         with io.open(path, 'w', encoding='utf-8') as f:
             f.write(json.dumps(tokenizer_json, ensure_ascii=True))
 
 
 class TrigramTokenizer(CustomTokenizer):
-    def __init__(self, maxlen=None, **kwargs):
+    def __init__(self, maxlen=None, exp_name: Optional[str] = None, **kwargs):
         """
 
         :param maxlen:
         :param kwargs:
         """
-        super().__init__(**kwargs)
+        super().__init__(maxlen, exp_name, **kwargs)
         self.maxlen = maxlen
         self.name = f'trigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+    def build_outfile(self) -> str:
+        """
+
+        Returns
+        -------
+
+        """
+        outfile = []
+
+        if self.exp_name:
+            outfile.append(self.exp_name)
+
+        outfile.append('trigram')
+        outfile.append('tokenizer')
+
+        if self.num_words is None:
+            self.num_words = len(self.index_word)
+
+        outfile.extend(['nw', str(self.num_words)])
+
+        outfile.extend(['ml', str(self.maxlen)])
+
+        self.name = '_'.join(outfile) + '.json'
+
+        return self.name
 
     @staticmethod
     def get_ngrams(text: str, n: int = 3, step=1) -> str:
@@ -234,29 +288,55 @@ class TrigramTokenizer(CustomTokenizer):
 
         :return:
         """
-        if self.num_words is None:
-            self.num_words = len(self.index_word)
-            self.name = f'trigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+        self.name = self.build_outfile()
 
         tokenizer_json = self.to_json()
 
         path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        exp_logger.info(f'Storing Trigram Tokenizer at: {path}')
 
         with io.open(path, 'w', encoding='utf-8') as f:
             f.write(json.dumps(tokenizer_json, ensure_ascii=True))
 
 
 class UnigramTokenizer(CustomTokenizer):
-    def __init__(self, maxlen=None, **kwargs):
+    def __init__(self, maxlen=None, exp_name: Optional[str] = None, **kwargs):
         """
 
         :param maxlen:
         :param kwargs:
         """
-        super().__init__(**kwargs)
+        super().__init__(maxlen, exp_name, **kwargs)
 
         self.maxlen = maxlen
         self.name = f'unigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+
+    def build_outfile(self) -> str:
+        """
+
+        Returns
+        -------
+
+        """
+        outfile = []
+
+        if self.exp_name:
+            outfile.append(self.exp_name)
+
+        outfile.append('unigram')
+        outfile.append('tokenizer')
+
+        if self.num_words is None:
+            self.num_words = len(self.index_word)
+
+        outfile.extend(['nw', str(self.num_words)])
+
+        outfile.extend(['ml', str(self.maxlen)])
+
+        self.name = '_'.join(outfile) + '.json'
+
+        return self.name
 
     @staticmethod
     def get_ngrams(text: str) -> str:
@@ -317,13 +397,13 @@ class UnigramTokenizer(CustomTokenizer):
 
         :return:
         """
-        if self.num_words is None:
-            self.num_words = len(self.index_word)
-            self.name = f'unigram_tokenizer_nw_{self.num_words}_ml_{self.maxlen}.json'
+        self.name = self.build_outfile()
 
         tokenizer_json = self.to_json()
 
         path = os.path.join(DirConf.MODELS_DIR, self.name)
+
+        exp_logger.info(f'Storing Unigram Tokenizer at: {path}')
 
         with io.open(path, 'w', encoding='utf-8') as f:
             f.write(json.dumps(tokenizer_json, ensure_ascii=True))
