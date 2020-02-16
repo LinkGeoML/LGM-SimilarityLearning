@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Optional, NoReturn
 
 import numpy as np
@@ -6,9 +7,8 @@ from tensorflow.keras import Model, Sequential
 from tensorflow.keras import models
 from tensorflow.keras.layers import Input, Lambda, Embedding, Dense
 from tensorflow.keras.utils import plot_model
-from tensorflow.python.keras.callbacks import (EarlyStopping,
-                                               ReduceLROnPlateau,
-                                               ModelCheckpoint, TensorBoard)
+from tensorflow.python.keras.callbacks import (EarlyStopping, ModelCheckpoint,
+                                               ReduceLROnPlateau, TensorBoard)
 
 from similarity_learning.config import DirConf
 from similarity_learning.distance import exponent_neg_manhattan_distance
@@ -42,9 +42,19 @@ class BaseNet(metaclass=BaseNetMeta):
     basic model operations.
     """
 
-    def __init__(self, encoder: Sequential):
+    def __init__(self, encoder: Sequential, exp_name: Optional[str] = None):
+        """
+
+        Parameters
+        ----------
+        encoder
+        exp_name
+        """
         self._model: Optional[Model] = None
         self.encoder = encoder
+        self.exp_name = exp_name
+
+        print(self.default_path)
 
     @property
     def name(self) -> str:
@@ -62,7 +72,11 @@ class BaseNet(metaclass=BaseNetMeta):
     def default_path(self) -> str:
         """Returns the default path to model weights"""
 
-        return self.__class__.default_path
+        default = self.__class__.default_path
+        if self.exp_name:
+            default = re.sub('.h5', f'_{self.exp_name}.h5', default)
+
+        return default
 
     def load_weights(self, path: str = None) -> NoReturn:
         """
@@ -251,14 +265,15 @@ class BaseNet(metaclass=BaseNetMeta):
 
 class SiameseNet(BaseNet):
 
-    def __init__(self, encoder: Sequential):
+    def __init__(self, encoder: Sequential, exp_name: Optional[str] = None):
         """
 
         Parameters
         ----------
         encoder
+        exp_name
         """
-        super().__init__(encoder)
+        super().__init__(encoder, exp_name)
 
     def build(self,
               max_features,
@@ -317,14 +332,15 @@ class SiameseNet(BaseNet):
 
 class SiameseNetV2(BaseNet):
 
-    def __init__(self, encoder: Sequential):
+    def __init__(self, encoder: Sequential, exp_name: Optional[str] = None):
         """
 
         Parameters
         ----------
         encoder
+        exp_name
         """
-        super().__init__(encoder)
+        super().__init__(encoder, exp_name)
 
     def build(self,
               max_features,
