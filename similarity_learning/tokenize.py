@@ -2,7 +2,7 @@ import io
 import json
 import os
 import sys
-from typing import List, Optional, NoReturn
+from typing import List, Optional, NoReturn, Union
 
 from more_itertools import windowed
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -10,56 +10,6 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 
 from similarity_learning.config import DirConf
 from similarity_learning.logger import exp_logger
-
-
-def tokenizer_from_json(json_string):
-    """
-    Parses a JSON tokenizer configuration file and returns a
-    tokenizer instance.
-
-    :param json_string: JSON string encoding a tokenizer configuration.
-    :return: A Keras Tokenizer instance
-    """
-
-    tokenizer_config = json.loads(json_string)
-
-    class_name = tokenizer_config['class_name']
-
-    class_config = tokenizer_config.get('config')
-
-    word_counts = json.loads(class_config.pop('word_counts'))
-    word_docs = json.loads(class_config.pop('word_docs'))
-    index_docs = json.loads(class_config.pop('index_docs'))
-    # Integer indexing gets converted to strings with json.dumps()
-    index_docs = {int(k): v for k, v in index_docs.items()}
-    index_word = json.loads(class_config.pop('index_word'))
-    index_word = {int(k): v for k, v in index_word.items()}
-    word_index = json.loads(class_config.pop('word_index'))
-
-    TokenizerCLass = getattr(sys.modules[__name__], class_name)
-
-    tokenizer = TokenizerCLass(**class_config)
-    tokenizer.word_counts = word_counts
-    tokenizer.word_docs = word_docs
-    tokenizer.index_docs = index_docs
-    tokenizer.word_index = word_index
-    tokenizer.index_word = index_word
-
-    return tokenizer
-
-
-def load_tokenizer(name: str):
-    """
-
-    :return:
-    """
-    path = os.path.join(DirConf.MODELS_DIR, name)
-
-    with open(path) as f:
-        json_string = json.load(f)
-        tokenizer = tokenizer_from_json(json_string)
-
-    return tokenizer
 
 
 class CustomTokenizer(Tokenizer):
@@ -407,6 +357,66 @@ class UnigramTokenizer(CustomTokenizer):
 
         with io.open(path, 'w', encoding='utf-8') as f:
             f.write(json.dumps(tokenizer_json, ensure_ascii=True))
+
+
+def tokenizer_from_json(json_string):
+    """
+    Parses a JSON tokenizer configuration file and returns a
+    tokenizer instance.
+
+    :param json_string: JSON string encoding a tokenizer configuration.
+    :return: A Keras Tokenizer instance
+    """
+
+    tokenizer_config = json.loads(json_string)
+
+    class_name = tokenizer_config['class_name']
+
+    class_config = tokenizer_config.get('config')
+
+    word_counts = json.loads(class_config.pop('word_counts'))
+    word_docs = json.loads(class_config.pop('word_docs'))
+    index_docs = json.loads(class_config.pop('index_docs'))
+    # Integer indexing gets converted to strings with json.dumps()
+    index_docs = {int(k): v for k, v in index_docs.items()}
+    index_word = json.loads(class_config.pop('index_word'))
+    # Integer indexing gets converted to strings with json.dumps()
+    index_word = {int(k): v for k, v in index_word.items()}
+
+    word_index = json.loads(class_config.pop('word_index'))
+
+    TokenizerCLass = getattr(sys.modules[__name__], class_name)
+
+    tokenizer = TokenizerCLass(**class_config)
+    tokenizer.word_counts = word_counts
+    tokenizer.word_docs = word_docs
+    tokenizer.index_docs = index_docs
+    tokenizer.word_index = word_index
+    tokenizer.index_word = index_word
+
+    tokenizer.num_words = class_config['num_words']
+    tokenizer.filters = class_config['filters']
+    tokenizer.lower = class_config['lower']
+    tokenizer.split = class_config['split']
+    tokenizer.char_level = class_config['char_level']
+    tokenizer.oov_token = class_config['oov_token']
+    tokenizer.document_count = class_config['document_count']
+
+    return tokenizer
+
+
+def load_tokenizer(name: str) -> Union[UnigramTokenizer, TrigramTokenizer]:
+    """
+
+    :return:
+    """
+    path = os.path.join(DirConf.MODELS_DIR, name)
+
+    with open(path) as f:
+        json_string = json.load(f)
+        tokenizer = tokenizer_from_json(json_string)
+
+    return tokenizer
 
 
 if __name__ == "__main__":
