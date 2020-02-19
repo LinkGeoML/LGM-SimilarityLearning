@@ -6,13 +6,9 @@ url = "https://pypi.python.org/simple"
 [packages]
 tqdm = "*"
 scikit-learn = "*"
-# > 1.16.0 causes scikit-image < 0.14.2 import failure
-# https://github.com/scikit-image/scikit-image/issues/3649
-numpy = "==1.16.2"
+numpy = "*"
 ipython = "*"
-# pandas 0.25.0 raises error
-# https://github.com/pandas-dev/pandas/issues/27543
-pandas = "==0.24.2"
+pandas = "*"
 jupyter = "*"
 matplotlib = "*"
 ipdb = "*"
