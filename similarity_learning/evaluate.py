@@ -2,6 +2,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
+from tensorflow.python.keras.models import load_model
+
+from similarity_learning import distance as distances
 from similarity_learning.config import DirConf
 from similarity_learning.dataset import TestDataset
 from similarity_learning.experiment import Components
@@ -140,35 +143,48 @@ class ExperimentEvaluator:
 
         model = self.evaluator['model']
 
-        model.build(max_features=num_words,
-                    maxlen=maxlen,
-                    emb_dim=100,
-                    n_hidden=50)
+        distance_layer_name = self.model_params['distance']
+        model_fpath = Path(DirConf.MODELS_DIR).joinpath(
+            self.model_params['weights'])
 
-        weights_fname = self.model_params.get('weights')
-        if weights_fname:
-            weights_path = Path(DirConf.MODELS_DIR).joinpath(weights_fname)
-            assert weights_path.exists()
-            model.load_weights(weights_path)
+        model._model = load_model(
+            model_fpath,
+            custom_objects={
+                distance_layer_name: getattr(distances,
+                                             distance_layer_name)})
+        print(model._model.summary())
 
-        metrics = [self.evaluator['metrics'][metric_name] for metric_name in
-                   self.evaluator['primary_metrics']]
-
-        model._model.compile(loss=self.evaluator['criterion'],
-                             optimizer=self.evaluator['optimizer'],
-                             metrics=metrics)
-
+        # model.build(max_features=num_words,
+        #             maxlen=maxlen,
+        #             emb_dim=100,
+        #             n_hidden=50)
+        #
+        # weights_fname = self.model_params.get('weights')
+        # if weights_fname:
+        #     weights_path = Path(DirConf.MODELS_DIR).joinpath(weights_fname)
+        #     assert weights_path.exists()
+        #     model.load_weights(weights_path)
+        #
+        # metrics = [self.evaluator['metrics'][metric_name] for metric_name in
+        #            self.evaluator['primary_metrics']]
+        #
+        # model._model.compile(loss=self.evaluator['criterion'],
+        #                      optimizer=self.evaluator['optimizer'],
+        #                      metrics=metrics)
+        #
         eval_metrics = model.evaluate(
             test_gen=self.evaluator['dataset'].test_sampler,
             y_true=self.evaluator['dataset'].data_['target'],
             show_info=True,
             multi_process=False)
 
-        eval_metric_names = ['Loss'] + metrics
-
-        d = dict()
-        for k, v in zip(eval_metric_names, eval_metrics):
-            exp_logger.info(f'{k} : {v}')
-            d[k] = v
-
-        return d
+        print(eval_metrics)
+        #
+        # eval_metric_names = ['Loss'] + metrics
+        #
+        # d = dict()
+        # for k, v in zip(eval_metric_names, eval_metrics):
+        #     exp_logger.info(f'{k} : {v}')
+        #     d[k] = v
+        #
+        # return d
