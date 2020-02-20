@@ -1,11 +1,12 @@
 dataset:
-  fname: 'n_alternates_1+_latin_stratified_split_x_test.csv'
-  tokenizer_fname: 'unigram_tokenizer_nw_164_ml_32.json'
+  fname: 'n_alternates_1+_global_random_split_x_test.csv'
+  tokenizer_fname: 'exp_global_random_unigram_tokenizer_nw_5893_ml_32.json'
   use_external: false
 model:
   name: 'siamese_net_v2'
   encoder: 'lstm1'
-  weights: 'siamese_net_v2.h5'
+  distance: 'exponent_neg_manhattan_distance'
+  weights: 'siamese_net_v2_exp_global_random.h5'
 criterion:
   name: 'binary_crossentropy'
 optimizer:
@@ -16,4 +17,4 @@ test_sampler:
   shuffle: true
 metrics:
   accuracy: 'primary'
-  AUC: 'primary'
+#  AUC: 'primary'
