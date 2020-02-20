@@ -1,6 +1,6 @@
 dataset:
-  train_fname: 'n_alternates_1+_latin_stratified_split_x_val.csv'
-  val_fname: 'n_alternates_1+_latin_stratified_split_x_test.csv'
+  train_fname: 'n_alternates_1+_global_random_split_x_train.csv'
+  val_fname: 'n_alternates_1+_global_random_split_x_val.csv'
   max_chars: 32
 tokenizer:
   name: unigram_tokenizer
@@ -9,7 +9,7 @@ tokenizer:
 train_sampler:
   name: sampler_v2
   batch_size: 16
-  n_negatives: 3
+  n_negatives: 1
   neg_samples_size: 30
   shuffle: true
 val_sampler:
@@ -30,6 +30,6 @@ metrics:
   accuracy: 'primary'
   AUC: 'primary'
 training:
-  num_epochs: 3
+  num_epochs: 20
   num_workers: 8
   multi_process: false
