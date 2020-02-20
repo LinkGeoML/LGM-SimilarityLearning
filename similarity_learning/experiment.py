@@ -65,7 +65,7 @@ class Components:
 
         encoder_name = params.pop('encoder')
 
-        exp_name = params.pop('exp_name')
+        exp_name = params.pop('exp_name') if 'exp_name' in params else None
 
         self.logger.info('Encoder name: {}'.format(encoder_name))
         encoder = getattr(encoders, encoder_name)
