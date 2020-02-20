@@ -107,33 +107,42 @@ class BaseNet(metaclass=BaseNetMeta):
 
         """
         weights_path = path if path else self.default_path
+        weights_path = str(weights_path)
+
         self._model.save_weights(filepath=weights_path, overwrite=True)
 
-    def save_model(self, file_path):
+    def save_model(self, path):
         """
         Save model architecture and weights
         Parameters
         ----------
-        file_path
+        path
 
         Returns
         -------
 
         """
-        self._model.save(file_path)
 
-    def load_model(self, file_path):
+        model_path = path if path else self.default_path
+        model_path = str(model_path)
+
+        self._model.save(model_path)
+
+    def load_model(self, path):
         """
         Load model architecture and weights
         Parameters
         ----------
-        file_path
+        path
 
         Returns
         -------
 
         """
-        self._model = models.load_model(file_path)
+
+        model_path = path if path else self.default_path
+        model_path = str(model_path)
+        self._model = models.load_model(model_path)
 
     def build(self, max_features: int, maxlen: int, emb_dim: int,
               n_hidden: int = 50):
@@ -174,14 +183,16 @@ class BaseNet(metaclass=BaseNetMeta):
                                      monitor=monitor,
                                      verbose=1,
                                      save_best_only=True,
-                                     save_weights_only=True,
+                                     save_weights_only=False,
                                      load_weights_on_restart=False)
 
         logs_dir = os.path.join(DirConf.LOG_DIR, 'experiment')
         if not os.path.exists(logs_dir):
             os.mkdir(logs_dir)
 
-        tb = TensorBoard(log_dir=logs_dir)
+        tb = TensorBoard(log_dir=logs_dir,
+                         write_graph=True)
+
         return [es, rop, checkpoint, tb]
 
     def plot_summary(self) -> NoReturn:
