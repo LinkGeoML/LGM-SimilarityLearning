@@ -364,13 +364,15 @@ class TestDataset:
             A pandas dataframe that
         """
         if self.data_ is None:
-            logger.info('Loading test dataset')
-
             if self.use_external:
+                logger.info('Loading external test dataset')
+                self.data_ = pd.read_csv(self.path,
+                                         usecols=self.external_cols,
+                                         nrows=TEST_ROWS, sep='\t')
 
-                self.data_ = pd.read_csv(self.path, usecols=self.external_cols,
-                                         nrows=TEST_ROWS)
+                self.data_['target'] = self.data_['target'].astype(int)
             else:
+                logger.info('Loading test dataset')
                 self.data_ = pd.read_csv(self.path, usecols=self.cols,
                                          nrows=TEST_ROWS)
 
@@ -409,20 +411,24 @@ class TestDataset:
         #  ========== Procedure for the Test Set ===================
 
         for col_name in self.external_cols:
+            if col_name == 'target':
+                # obviously, we don't want to tokenize the target
+                continue
+
             logger.info(f'Creating N-grams for column name: "{col_name}".')
 
-            self.data[f'{col_name}_ngrams'] = self.data['name'].progress_apply(
-                self.tokenizer.get_ngrams)
+            self.data[f'{col_name}_ngrams'] = self.data[
+                col_name].progress_apply(self.tokenizer.get_ngrams)
 
             logger.info(f'Converting column name: "{col_name}" to sequences')
 
             self.data[f'{col_name}_seq'] = self.data[
-                'name_ngrams'].progress_apply(
+                f'{col_name}_ngrams'].progress_apply(
                 lambda x: self.tokenizer.texts_to_sequences(texts=[x])[0])
 
             logger.info(f'Padding sequences for column name: "{col_name}".')
             self.data[f'{col_name}_seq'] = self.data[
-                'name_seq'].progress_apply(self.tokenizer.pad_single)
+                f'{col_name}_seq'].progress_apply(self.tokenizer.pad_single)
 
         self.data_ = self.data_[self.output_cols]
 
